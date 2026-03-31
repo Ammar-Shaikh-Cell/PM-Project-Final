@@ -1,0 +1,74 @@
+## 🔄 **Execution Flow Diagram**
+
+```
+APP START
+   ↓
+Load Config (get_settings)
+   ↓
+Create FastAPI App
+   ↓
+Setup OpenAPI (custom_openapi)
+   ↓
+Add Middlewares (CORS + GZip)
+   ↓
+Register Exception Handlers (404 + Validation)
+   ↓
+Create reports directory
+   ↓
+Include Routers (ALL APIs)
+   ↓
+Mount Static Files (/reports)
+   ↓
+-----------------------------------
+🚀 STARTUP EVENT TRIGGER
+-----------------------------------
+   ↓
+Check CLEAN_SLATE env
+   ↓
+   ├── YES → Delete Tickets + Alarms → Reset Incident Manager
+   └── NO  → Skip
+   ↓
+Log: Using TimescaleDB
+   ↓
+Seed Demo Users
+   ↓
+Seed Demo Machines
+   ↓
+Verify Email Config
+   ↓
+   ├── Configured → Verify SMTP
+   └── Not Configured → Warning
+   ↓
+Start Background Task:
+   👉 pressure_alert_loop (runs every 60s)
+   ↓
+Check TimescaleDB Connection
+   ↓
+Startup Complete ✅
+-----------------------------------
+
+🌐 REQUEST FLOW
+-----------------------------------
+Client Request
+   ↓
+Middleware (CORS + GZip)
+   ↓
+Route Match
+   ↓
+   ├── Valid Route → संबंधित Router Handler
+   ├── Invalid Route → 404 Handler
+   └── Validation Error → 422 Handler
+   ↓
+Response Sent
+
+-----------------------------------
+🛑 SHUTDOWN EVENT
+-----------------------------------
+App Stop
+   ↓
+Cancel pressure_alert_loop Task
+   ↓
+Cleanup Done
+   ↓
+Shutdown Complete ✅
+```

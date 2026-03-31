@@ -1,0 +1,9 @@
+backend:
+1) changes required in .env file for production
+2) change required in tsdb_client.py line 42;
+3) remove my-env 'virtual' env before prod.
+
+
+
+frontend:
+1) remove node_modules before prod.

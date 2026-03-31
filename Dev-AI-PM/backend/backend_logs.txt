@@ -1,0 +1,200 @@
+﻿backend-1  | WHERE machine.status = $1::VARCHAR
+backend-1  | 2026-02-09 12:38:17,482 INFO sqlalchemy.engine.Engine [cached since 361s ago] ('degraded',)
+backend-1  | 2026-02-09 12:38:17,492 INFO sqlalchemy.engine.Engine ROLLBACK
+backend-1  | 2026-02-09 12:38:17,492 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+backend-1  | 2026-02-09 12:38:17,493 INFO sqlalchemy.engine.Engine SELECT "user".email, "user".full_name, "user".role, "user".hashed_password, "user".last_login, "user".refresh_token_hash, "user".refresh_token_expires_at, "user".id, "user".created_at, "user".updated_at 
+backend-1  | FROM "user" 
+backend-1  | WHERE "user".email = $1::VARCHAR
+backend-1  | 2026-02-09 12:38:17,493 INFO sqlalchemy.engine.Engine [cached since 389.6s ago] ('admin@example.com',)
+backend-1  | ERROR:    Exception in ASGI application
+backend-1  | Traceback (most recent call last):
+backend-1  |   File "/usr/local/lib/python3.11/site-packages/uvicorn/protocols/http/httptools_impl.py", line 401, in run_asgi
+backend-1  |     result = await app(  # type: ignore[func-returns-value]
+backend-1  |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend-1  |   File "/usr/local/lib/python3.11/site-packages/uvicorn/middleware/proxy_headers.py", line 70, in __call__
+backend-1  |     return await self.app(scope, receive, send)
+backend-1  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend-1  |   File "/usr/local/lib/python3.11/site-packages/fastapi/applications.py", line 1054, in __call__
+backend-1  |     await super().__call__(scope, receive, send)
+backend-1  |   File "/usr/local/lib/python3.11/site-packages/starlette/applications.py", line 113, in __call__
+backend-1  |     await self.middleware_stack(scope, receive, send)
+backend-1  |   File "/usr/local/lib/python3.11/site-packages/starlette/middleware/errors.py", line 187, in __call__
+backend-1  |     raise exc
+backend-1  |   File "/usr/local/lib/python3.11/site-packages/starlette/middleware/errors.py", line 165, in __call__
+backend-1  |     await self.app(scope, receive, _send)
+backend-1  |   File "/usr/local/lib/python3.11/site-packages/starlette/middleware/gzip.py", line 20, in __call__
+backend-1  |     await responder(scope, receive, send)
+backend-1  |   File "/usr/local/lib/python3.11/site-packages/starlette/middleware/gzip.py", line 39, in __call__
+backend-1  |     await self.app(scope, receive, self.send_with_gzip)
+backend-1  |   File "/usr/local/lib/python3.11/site-packages/starlette/middleware/cors.py", line 85, in __call__
+backend-1  |     await self.app(scope, receive, send)
+backend-1  |   File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 62, in __call__
+backend-1  |     await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+backend-1  |   File "/usr/local/lib/python3.11/site-packages/starlette/_exception_handler.py", line 62, in wrapped_app
+backend-1  |     raise exc
+backend-1  |   File "/usr/local/lib/python3.11/site-packages/starlette/_exception_handler.py", line 51, in wrapped_app
+backend-1  |     await app(scope, receive, sender)
+backend-1  |   File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 715, in __call__
+backend-1  |     await self.middleware_stack(scope, receive, send)
+backend-1  |   File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 735, in app
+backend-1  |     await route.handle(scope, receive, send)
+backend-1  |   File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 288, in handle
+backend-1  |     await self.app(scope, receive, send)
+backend-1  |   File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 76, in app
+backend-1  |     await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+backend-1  |   File "/usr/local/lib/python3.11/site-packages/starlette/_exception_handler.py", line 62, in wrapped_app
+backend-1  |     raise exc
+backend-1  |   File "/usr/local/lib/python3.11/site-packages/starlette/_exception_handler.py", line 51, in wrapped_app
+backend-1  |     await app(scope, receive, sender)
+backend-1  |   File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 73, in app
+backend-1  |     response = await f(request)
+backend-1  |                ^^^^^^^^^^^^^^^^
+backend-1  |   File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 301, in app
+backend-1  |     raw_response = await run_endpoint_function(
+backend-1  |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend-1  |   File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 212, in run_endpoint_function
+backend-1  |     return await dependant.call(**values)
+backend-1  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend-1  |   File "/app/app/api/routers/dashboard.py", line 401, in get_extruder_derived_kpis
+backend-1  |     machines = await session.scalars(select(Machine).where(Machine.name == "Extruder-SQL").limit(1))
+backend-1  |                                      ^^^^^^
+backend-1  | UnboundLocalError: cannot access local variable 'select' where it is not associated with a value
+backend-1  | 2026-02-09 12:38:17,497 INFO sqlalchemy.engine.Engine SELECT count(machine.id) AS count_1 
+backend-1  | FROM machine 
+backend-1  | WHERE machine.criticality = $1::VARCHAR
+backend-1  | 2026-02-09 12:38:17,497 INFO sqlalchemy.engine.Engine [cached since 360.9s ago] ('low',)
+backend-1  | ERROR:    Exception in ASGI application
+backend-1  | Traceback (most recent call last):
+backend-1  |   File "/usr/local/lib/python3.11/site-packages/uvicorn/protocols/http/httptools_impl.py", line 401, in run_asgi
+backend-1  |     result = await app(  # type: ignore[func-returns-value]
+backend-1  |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend-1  |   File "/usr/local/lib/python3.11/site-packages/uvicorn/middleware/proxy_headers.py", line 70, in __call__
+backend-1  |     return await self.app(scope, receive, send)
+backend-1  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend-1  |   File "/usr/local/lib/python3.11/site-packages/fastapi/applications.py", line 1054, in __call__
+backend-1  |     await super().__call__(scope, receive, send)
+backend-1  |   File "/usr/local/lib/python3.11/site-packages/starlette/applications.py", line 113, in __call__
+backend-1  |     await self.middleware_stack(scope, receive, send)
+backend-1  |   File "/usr/local/lib/python3.11/site-packages/starlette/middleware/errors.py", line 187, in __call__
+backend-1  |     raise exc
+backend-1  |   File "/usr/local/lib/python3.11/site-packages/starlette/middleware/errors.py", line 165, in __call__
+backend-1  |     await self.app(scope, receive, _send)
+backend-1  |   File "/usr/local/lib/python3.11/site-packages/starlette/middleware/gzip.py", line 20, in __call__
+backend-1  |     await responder(scope, receive, send)
+backend-1  |   File "/usr/local/lib/python3.11/site-packages/starlette/middleware/gzip.py", line 39, in __call__
+backend-1  |     await self.app(scope, receive, self.send_with_gzip)
+backend-1  |   File "/usr/local/lib/python3.11/site-packages/starlette/middleware/cors.py", line 85, in __call__
+backend-1  |     await self.app(scope, receive, send)
+backend-1  |   File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 62, in __call__
+backend-1  |     await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+backend-1  |   File "/usr/local/lib/python3.11/site-packages/starlette/_exception_handler.py", line 62, in wrapped_app
+backend-1  |     raise exc
+backend-1  |   File "/usr/local/lib/python3.11/site-packages/starlette/_exception_handler.py", line 51, in wrapped_app
+backend-1  |     await app(scope, receive, sender)
+backend-1  |   File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 715, in __call__
+backend-1  |     await self.middleware_stack(scope, receive, send)
+backend-1  |   File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 735, in app
+backend-1  |     await route.handle(scope, receive, send)
+backend-1  |   File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 288, in handle
+backend-1  |     await self.app(scope, receive, send)
+backend-1  |   File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 76, in app
+backend-1  |     await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+backend-1  |   File "/usr/local/lib/python3.11/site-packages/starlette/_exception_handler.py", line 62, in wrapped_app
+backend-1  |     raise exc
+backend-1  |   File "/usr/local/lib/python3.11/site-packages/starlette/_exception_handler.py", line 51, in wrapped_app
+backend-1  |     await app(scope, receive, sender)
+backend-1  |   File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 73, in app
+backend-1  |     response = await f(request)
+backend-1  |                ^^^^^^^^^^^^^^^^
+backend-1  |   File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 301, in app
+backend-1  |     raw_response = await run_endpoint_function(
+backend-1  |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend-1  |   File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 212, in run_endpoint_function
+backend-1  |     return await dependant.call(**values)
+backend-1  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend-1  |   File "/app/app/api/routers/dashboard.py", line 401, in get_extruder_derived_kpis
+backend-1  |     machines = await session.scalars(select(Machine).where(Machine.name == "Extruder-SQL").limit(1))
+backend-1  |                                      ^^^^^^
+backend-1  | UnboundLocalError: cannot access local variable 'select' where it is not associated with a value
+backend-1  | 2026-02-09 12:38:17,501 INFO sqlalchemy.engine.Engine ROLLBACK
+backend-1  | 2026-02-09 12:38:17,502 INFO sqlalchemy.engine.Engine SELECT machine.name, machine.location, machine.description, machine.status, machine.criticality, machine.metadata, machine.last_service_date, machine.thresholds, machine.id, machine.created_at, machine.updated_at 
+backend-1  | FROM machine
+backend-1  | 2026-02-09 12:38:17,502 INFO sqlalchemy.engine.Engine [cached since 389.6s ago] ()
+backend-1  | 2026-02-09 12:38:17,504 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+backend-1  | 2026-02-09 12:38:17,504 INFO sqlalchemy.engine.Engine SELECT "user".email, "user".full_name, "user".role, "user".hashed_password, "user".last_login, "user".refresh_token_hash, "user".refresh_token_expires_at, "user".id, "user".created_at, "user".updated_at 
+backend-1  | FROM "user" 
+backend-1  | WHERE "user".email = $1::VARCHAR
+backend-1  | 2026-02-09 12:38:17,504 INFO sqlalchemy.engine.Engine [cached since 389.6s ago] ('admin@example.com',)
+backend-1  | 2026-02-09 12:38:17,514 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+backend-1  | 2026-02-09 12:38:17,514 INFO sqlalchemy.engine.Engine SELECT "user".email, "user".full_name, "user".role, "user".hashed_password, "user".last_login, "user".refresh_token_hash, "user".refresh_token_expires_at, "user".id, "user".created_at, "user".updated_at 
+backend-1  | FROM "user" 
+backend-1  | WHERE "user".email = $1::VARCHAR
+backend-1  | 2026-02-09 12:38:17,514 INFO sqlalchemy.engine.Engine [cached since 389.6s ago] ('admin@example.com',)
+backend-1  | 2026-02-09 12:38:17.516 | DEBUG    | app.services.machine_state_service:get_current_state:512 - Machine a06f0682-9f91-4992-b2f5-533cbc0b5ef5 has no readings - returning OFF state
+backend-1  | 2026-02-09 12:38:17.517 | DEBUG    | app.services.machine_state_service:get_current_state:512 - Machine a06f0682-9f91-4992-b2f5-533cbc0b5ef5 has no readings - returning OFF state
+backend-1  | 2026-02-09 12:38:17,519 INFO sqlalchemy.engine.Engine ROLLBACK
+backend-1  | 2026-02-09 12:38:17,520 INFO sqlalchemy.engine.Engine SELECT count(machine.id) AS count_1 
+backend-1  | FROM machine 
+backend-1  | WHERE machine.criticality = $1::VARCHAR
+backend-1  | 2026-02-09 12:38:17,520 INFO sqlalchemy.engine.Engine [cached since 360.9s ago] ('medium',)
+backend-1  | 2026-02-09 12:38:17,523 INFO sqlalchemy.engine.Engine SELECT count(machine.id) AS count_1 
+backend-1  | FROM machine 
+backend-1  | WHERE machine.criticality = $1::VARCHAR
+backend-1  | 2026-02-09 12:38:17,523 INFO sqlalchemy.engine.Engine [cached since 360.9s ago] ('high',)
+backend-1  | 2026-02-09 12:38:17,524 INFO sqlalchemy.engine.Engine 
+backend-1  |             SELECT 
+backend-1  |                 id, name, location, description, status, criticality,
+backend-1  |                 metadata, last_service_date, created_at, updated_at
+backend-1  |             FROM machine
+backend-1  |             ORDER BY created_at DESC
+backend-1  |         
+backend-1  | 2026-02-09 12:38:17,524 INFO sqlalchemy.engine.Engine [cached since 360.8s ago] ()
+backend-1  | 2026-02-09 12:38:17,538 INFO sqlalchemy.engine.Engine SELECT count(machine.id) AS count_1 
+backend-1  | FROM machine 
+backend-1  | WHERE machine.criticality = $1::VARCHAR
+backend-1  | 2026-02-09 12:38:17,538 INFO sqlalchemy.engine.Engine [cached since 361s ago] ('critical',)
+backend-1  | 2026-02-09 12:38:17,539 INFO sqlalchemy.engine.Engine SELECT count(machine.id) AS count_1 
+backend-1  | FROM machine 
+backend-1  | WHERE machine.status = $1::VARCHAR
+backend-1  | 2026-02-09 12:38:17,539 INFO sqlalchemy.engine.Engine [cached since 361.1s ago] ('online',)
+backend-1  | 2026-02-09 12:38:17,543 INFO sqlalchemy.engine.Engine ROLLBACK
+backend-1  | 2026-02-09 12:38:17,543 INFO sqlalchemy.engine.Engine ROLLBACK
+backend-1  | INFO:     172.18.0.5:52630 - "GET /health/live HTTP/1.1" 200 OK
+backend-1  | 2026-02-09 12:38:17,548 INFO sqlalchemy.engine.Engine SELECT count(sensor.id) AS count_1 
+backend-1  | FROM sensor
+backend-1  | 2026-02-09 12:38:17,548 INFO sqlalchemy.engine.Engine [cached since 361.1s ago] ()
+backend-1  | 2026-02-09 12:38:17,553 INFO sqlalchemy.engine.Engine SELECT count(machine.id) AS count_1 
+backend-1  | FROM machine 
+backend-1  | WHERE machine.status = $1::VARCHAR
+backend-1  | 2026-02-09 12:38:17,553 INFO sqlalchemy.engine.Engine [cached since 361.1s ago] ('offline',)
+backend-1  | 2026-02-09 12:38:17,555 INFO sqlalchemy.engine.Engine SELECT count(machine.id) AS count_1 
+backend-1  | FROM machine 
+backend-1  | WHERE machine.status = $1::VARCHAR
+backend-1  | 2026-02-09 12:38:17,555 INFO sqlalchemy.engine.Engine [cached since 361.1s ago] ('maintenance',)
+backend-1  | 2026-02-09 12:38:17,556 INFO sqlalchemy.engine.Engine ROLLBACK
+backend-1  | 2026-02-09 12:38:17,557 INFO sqlalchemy.engine.Engine SELECT count(machine.id) AS count_1 
+backend-1  | FROM machine 
+backend-1  | WHERE machine.status = $1::VARCHAR
+backend-1  | 2026-02-09 12:38:17,557 INFO sqlalchemy.engine.Engine [cached since 361.1s ago] ('degraded',)
+backend-1  | 2026-02-09 12:38:17,561 INFO sqlalchemy.engine.Engine ROLLBACK
+backend-1  | 2026-02-09 12:38:17,566 INFO sqlalchemy.engine.Engine SELECT count(machine.id) AS count_1 
+backend-1  | FROM machine 
+backend-1  | WHERE machine.criticality = $1::VARCHAR
+backend-1  | 2026-02-09 12:38:17,566 INFO sqlalchemy.engine.Engine [cached since 361s ago] ('low',)
+backend-1  | INFO:     172.18.0.5:53856 - "GET /machines HTTP/1.1" 200 OK
+backend-1  | 2026-02-09 12:38:17,572 INFO sqlalchemy.engine.Engine SELECT count(machine.id) AS count_1 
+backend-1  | FROM machine 
+backend-1  | WHERE machine.criticality = $1::VARCHAR
+backend-1  | 2026-02-09 12:38:17,572 INFO sqlalchemy.engine.Engine [cached since 361s ago] ('medium',)
+backend-1  | 2026-02-09 12:38:17,573 INFO sqlalchemy.engine.Engine SELECT count(machine.id) AS count_1 
+backend-1  | FROM machine 
+backend-1  | WHERE machine.criticality = $1::VARCHAR
+backend-1  | 2026-02-09 12:38:17,574 INFO sqlalchemy.engine.Engine [cached since 361s ago] ('high',)
+backend-1  | 2026-02-09 12:38:17,574 INFO sqlalchemy.engine.Engine ROLLBACK
+backend-1  | 2026-02-09 12:38:17,575 INFO sqlalchemy.engine.Engine SELECT count(machine.id) AS count_1 
+backend-1  | FROM machine 
+backend-1  | WHERE machine.criticality = $1::VARCHAR
+backend-1  | 2026-02-09 12:38:17,575 INFO sqlalchemy.engine.Engine [cached since 361s ago] ('critical',)
+backend-1  | 2026-02-09 12:38:17,578 INFO sqlalchemy.engine.Engine ROLLBACK
+backend-1  | INFO:     172.18.0.5:52642 - "GET /health/live HTTP/1.1" 200 OK
+backend-1  | INFO:     127.0.0.1:59060 - "GET /health/live HTTP/1.1" 200 OK

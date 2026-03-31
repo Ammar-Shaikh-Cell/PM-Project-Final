@@ -1,0 +1,47 @@
+version: "3.9"
+
+services:
+  timescaledb:
+    image: timescale/timescaledb:latest-pg15
+    container_name: timescaledb
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${TSDB_USER}
+      POSTGRES_PASSWORD: ${TSDB_PASSWORD}
+      POSTGRES_DB: ${TSDB_DATABASE}
+    ports:
+      # Host port 5433 to avoid conflict with local PostgreSQL on 5432
+      - "5433:5432"
+    volumes:
+      - timescale_data:/var/lib/postgresql/data
+      - ./init-db:/docker-entrypoint-initdb.d
+      - ./tab_actual_export.csv:/mnt/csv/tab_actual_export.csv:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${TSDB_USER} -d ${TSDB_DATABASE}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  poller:
+    build:
+      context: ./poller
+      dockerfile: Dockerfile
+    container_name: poller
+    restart: unless-stopped
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      POLL_INTERVAL_SECONDS: ${POLL_INTERVAL_SECONDS}
+      BATCH_SIZE: ${BATCH_SIZE}
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+volumes:
+  timescale_data:

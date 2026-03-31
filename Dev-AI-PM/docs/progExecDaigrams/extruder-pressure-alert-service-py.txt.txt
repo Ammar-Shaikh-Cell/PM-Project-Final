@@ -1,0 +1,43 @@
+START (pressure_alert_loop)
+   ↓
+Log: "Pressure alert loop started"
+   ↓
+┌──────────────────────────────┐
+│ Loop every interval_seconds  │
+└──────────────────────────────┘
+   ↓
+Fetch latest extruder row from TimescaleDB
+   ↓
+Row exists?
+   ├── NO → Skip iteration → sleep → next loop
+   └── YES
+         ↓
+Extract current_pressure & current_rpm
+         ↓
+Check if email notifications configured
+   ├── NO → Skip email sending
+   └── YES
+         ↓
+Load active pressure config from DB
+         ↓
+Determine thresholds: warning, critical, low
+         ↓
+Check if machine in production (rpm>=10, pressure>=5)
+         ↓
+Check HIGH pressure
+   ├─ Above critical → Send critical email if cooldown passed
+   ├─ Above warning  → Send warning email if cooldown passed
+Check LOW pressure
+   └─ Below low threshold → Send low pressure email if cooldown passed
+         ↓
+Check Start/Stop detection
+   ├─ Not running & prev_pressure <50 → current_pressure >300 → Send start email (if cooldown)
+   └─ Running & prev_pressure >300 → current_pressure <50 → Send stop email (if cooldown)
+         ↓
+Update module-level state (_last_pressure_value, _extruder_running, email timestamps)
+         ↓
+Sleep interval_seconds
+         ↓
+Repeat loop until cancelled
+   ↓
+STOP (on shutdown or cancellation)
