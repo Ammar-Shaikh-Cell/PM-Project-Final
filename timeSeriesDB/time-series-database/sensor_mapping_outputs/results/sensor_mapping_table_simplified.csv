@@ -1,0 +1,42 @@
+column_name,status,guessed_type,confidence,reason,role_group,negative_value_policy,min,max,mean,std(Standard deviation),pct_zero,pct_negative,n_unique
+Val_1,ACTIVE,screw_speed_actual_candidate,high,"0-138 range, immediate ON/OFF response, strongest primary production signal",key_process,replace_lt_0_with_NaN,0,138.300003,67.67583771,49.71831438,21.0836736,0,598
+Val_2,ACTIVE,slow_aux_temperature_or_environment,low,"18-53 range, very smooth, low-variance auxiliary slow process channel",auxiliary_slow,replace_lt_0_with_NaN,18,53,36.25831227,7.500600041,0,0,36
+Val_3,ACTIVE,slow_process_setting_or_aux_measure,low,"24-86 range, slow behavior, correlates with Val_33/Val_34 but not a key fast process variable",auxiliary_slow,replace_lt_0_with_NaN,24,86,59.05240132,22.13596285,0,0,63
+Val_4,ACTIVE,drive_frequency_or_aux_speed,medium,"0-15 range, immediate ON/OFF response, tightly coupled to Val_1 but lower dynamic range",key_process,replace_lt_0_with_NaN,0,15.0100002,6.835828611,4.929000882,0.204160996,0,112
+Val_5,ACTIVE,motor_load_or_current_candidate,high,"0-91.7 range, immediate ON/OFF response, strongest short-term coupling with Val_1 among load candidates",key_process,replace_lt_0_with_NaN,0,91.6999969,44.23348239,32.50866701,34.30552855,0,440
+Val_6,ACTIVE,melt_pressure_candidate,high,"2-402 range, collapses to low floor on stop, tracks production/load strongly",key_process,replace_lt_0_with_NaN,2,402,249.2768974,180.3489822,0,0,826
+Val_7,ACTIVE,temperature_zone_candidate,high,"24-187 range, smooth heating/cooling, strong thermal inertia",temperature,replace_lt_0_with_NaN,24.2000008,187.5,131.3005348,63.96833206,0,0,1363
+Val_8,ACTIVE,temperature_zone_candidate,high,"25-186 range, smooth heating/cooling, strong thermal inertia",temperature,replace_lt_0_with_NaN,24.6000004,185.699997,131.9348467,63.34799986,0,0,1417
+Val_9,ACTIVE,temperature_zone_candidate,high,"25-183 range, smooth heating/cooling, strong thermal inertia",temperature,replace_lt_0_with_NaN,24.7999992,183.300003,131.0917816,63.64657345,0,0,1310
+Val_10,ACTIVE,temperature_zone_candidate,high,"22.5-180 range, smooth heating/cooling, strong thermal inertia",temperature,replace_lt_0_with_NaN,22.5,179.600006,128.3054962,63.8400106,0,0,1263
+Val_11,ACTIVE,temperature_zone_candidate,high,"22.5-180 range, smooth heating/cooling, strong thermal inertia",temperature,replace_lt_0_with_NaN,22.5,179.699997,126.8549744,62.26164171,0,0,1309
+Val_12,INACTIVE,unused_channel,high,"100% zero, no variation",inactive,not_applicable,0,0,0,0,100,0,1
+Val_14,INACTIVE,unused_channel,high,"100% zero, no variation",inactive,not_applicable,0,0,0,0,100,0,1
+Val_15,INACTIVE,unused_channel,high,"100% zero, no variation",inactive,not_applicable,0,0,0,0,100,0,1
+Val_19,ACTIVE,recipe_or_setpoint_level,high,"0-37.5 range, immediate ON/OFF response, only 39 unique values, strongly stepwise",control_or_setpoint,replace_lt_0_with_NaN,0,37.5,23.8289814,17.52519766,34.79810746,0,39
+Val_20,ACTIVE,aux_load_or_control_signal,medium,"0-22.1 range, immediate ON/OFF response, moderately dynamic but less likely primary measured variable",control_or_setpoint,replace_lt_0_with_NaN,0,22.1000004,11.69706074,8.57453705,34.79810746,0,74
+Val_21,INACTIVE,constant_marker_or_limit,high,constant 100 for all rows,inactive,not_applicable,100,100,100,0,0,0,1
+Val_22,INACTIVE,unused_channel,high,"100% zero, no variation",inactive,not_applicable,0,0,0,0,100,0,1
+Val_23,INACTIVE,unused_channel,high,"100% zero, no variation",inactive,not_applicable,0,0,0,0,100,0,1
+Val_27,ACTIVE,temperature_zone_candidate,high,"24-175 range, smooth heating/cooling, strong thermal inertia",temperature,replace_lt_0_with_NaN,24,175.300003,127.622354,61.72784949,0,0,1288
+Val_28,ACTIVE,temperature_zone_candidate,high,"24-181 range, smooth heating/cooling, strong thermal inertia",temperature,replace_lt_0_with_NaN,24.2000008,180.699997,131.9387519,63.19230261,0,0,1345
+Val_29,ACTIVE,temperature_zone_candidate,high,"24-183 range, smooth heating/cooling, strong thermal inertia",temperature,replace_lt_0_with_NaN,23.7999992,182.600006,133.4888132,62.12002837,0,0,1499
+Val_30,ACTIVE,temperature_zone_candidate,high,"21-185 range, smooth heating/cooling, strong thermal inertia",temperature,replace_lt_0_with_NaN,20.7000008,184.600006,131.176292,66.20778522,0,0,1442
+Val_31,ACTIVE,temperature_zone_candidate,high,"21-185 range, smooth heating/cooling, strong thermal inertia",temperature,replace_lt_0_with_NaN,21,185,131.5806177,66.30363386,0,0,1408
+Val_32,ACTIVE,temperature_zone_candidate,high,"24.5-182 range, smooth heating/cooling, strong thermal inertia",temperature,replace_lt_0_with_NaN,24.5,182.199997,133.6200113,61.95828688,0,0,1459
+Val_33,ACTIVE,slow_derived_process_metric,medium,"0.6-7.5 range, smooth rise and gradual decay, likely derived thermal/process metric",derived_slow,replace_lt_0_with_NaN,0.600000024,7.5,4.046127417,2.350036401,0,0,69
+Val_34,ACTIVE,slow_derived_process_metric_scaled,medium,"6-68 range, same shape as Val_33 at about 10x scale, likely related derived metric",derived_slow,replace_lt_0_with_NaN,6,68,37.23893318,21.23615348,0,0,62
+Val_35,INACTIVE,constant_setpoint_or_limit,high,constant 200 for all rows,inactive,not_applicable,200,200,200,0,0,0,1
+Val_36,INACTIVE,constant_setpoint_or_limit,high,constant 200 for all rows,inactive,not_applicable,200,200,200,0,0,0,1
+Val_37,INACTIVE,unused_channel,high,"100% zero, no variation",inactive,not_applicable,0,0,0,0,100,0,1
+Val_38,ACTIVE,bounded_deviation_or_score,medium,"-100 to 100 bounded, production-active, negatives likely semantic not raw physical",bounded_score,replace_sentinel_-1_and_-100_with_NaN_keep_other_in_range_negatives,-98.4000015,100,11.51236149,15.07628237,34.91372307,2.953888149,766
+Val_39,ACTIVE,bounded_percentage_signal,medium,"0-100 bounded, zero in OFF periods, percentage-like behavior",bounded_percentage,replace_lt_0_or_gt_100_with_NaN,0,100,10.23228337,9.782152816,32.65603733,0,314
+Val_40,ACTIVE,bounded_percentage_signal,medium,"0-100 bounded, zero in OFF periods, percentage-like behavior",bounded_percentage,replace_lt_0_or_gt_100_with_NaN,0,100,4.847614882,8.407948452,33.68980491,0,217
+Val_41,INACTIVE,rare_event_flag_or_unused,high,"97.9% zero, effectively inactive for modeling",inactive,not_applicable,0,100,1.218270789,10.37406077,97.92922419,0,226
+Val_42,ACTIVE,bounded_percentage_signal,medium,"0-100 bounded, zero in OFF periods, percentage-like behavior",bounded_percentage,replace_lt_0_or_gt_100_with_NaN,0,100,7.578776982,10.57801817,33.3884244,0,227
+Val_43,ACTIVE,bounded_percentage_signal,medium,"0-100 bounded, mostly low values with production-only activation",bounded_percentage,replace_lt_0_or_gt_100_with_NaN,0,100,1.328226068,7.583353827,57.69330482,0,180
+Val_44,ACTIVE,bounded_score_or_percentage,medium,"0-100 bounded, correlated with production level but short-term behavior suggests derived score/percent",bounded_score,replace_lt_0_with_NaN,0,100,20.5004634,15.49376067,32.9541772,0,477
+Val_45,ACTIVE,bounded_score_or_percentage,medium,"0-100 bounded, production-only, not a core physical sensor",bounded_score,replace_lt_0_with_NaN,0,100,9.817622658,9.889409901,34.80134811,0,352
+Val_46,ACTIVE,bounded_deviation_or_score,medium,"-100 to 100 bounded, negatives likely semantic not raw physical",bounded_score,replace_sentinel_-1_and_-100_with_NaN_keep_other_in_range_negatives,-96.3000031,100,11.98527522,12.05268851,32.29585876,0.168765416,425
+Val_47,ACTIVE,bounded_deviation_or_score,medium,"-100 to 100 bounded, negatives likely semantic not raw physical",bounded_score,replace_sentinel_-1_and_-100_with_NaN_keep_other_in_range_negatives,-88.8000031,100,0.553680661,10.06155934,33.4468531,45.34350645,559
+Val_48,ACTIVE,bounded_deviation_or_score,medium,"-100 to 100 bounded, negatives likely semantic not raw physical",bounded_score,replace_sentinel_-1_and_-100_with_NaN_keep_other_in_range_negatives,-93.5,100,-3.711635912,14.4617841,32.28663185,65.10202096,449

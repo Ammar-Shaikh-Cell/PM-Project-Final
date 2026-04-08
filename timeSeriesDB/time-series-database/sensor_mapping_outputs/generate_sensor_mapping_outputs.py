@@ -369,6 +369,13 @@ GROUP_PLOT_COLUMNS = {
     "group_bounded_scores.png": ["Val_38", "Val_39", "Val_40", "Val_42", "Val_43", "Val_44", "Val_45", "Val_46", "Val_47", "Val_48"],
 }
 
+BOUND_SCORE_SENTINEL_NA_VALUES = {
+    "Val_38": {-100.0, -1.0},
+    "Val_46": {-100.0, -1.0},
+    "Val_47": {-100.0, -1.0},
+    "Val_48": {-100.0, -1.0},
+}
+
 
 def ensure_dirs(paths: Iterable[Path]) -> None:
     for path in paths:
@@ -437,6 +444,20 @@ def build_mapping_table(stats_df: pd.DataFrame) -> pd.DataFrame:
     merged["reason"] = merged["reason"].fillna("No manual mapping defined")
     merged["role_group"] = merged["role_group"].fillna("unknown")
     merged["nonnegative_expected"] = merged["nonnegative_expected"].fillna(False)
+    merged["negative_value_policy"] = "keep_as_is"
+    merged.loc[merged["status"] == "INACTIVE", "negative_value_policy"] = "not_applicable"
+    merged.loc[
+        (merged["nonnegative_expected"]) & (merged["status"] == "ACTIVE"),
+        "negative_value_policy",
+    ] = "replace_lt_0_with_NaN"
+    merged.loc[
+        merged["role_group"] == "bounded_percentage",
+        "negative_value_policy",
+    ] = "replace_lt_0_or_gt_100_with_NaN"
+    merged.loc[
+        merged["column_name"].isin(BOUND_SCORE_SENTINEL_NA_VALUES.keys()),
+        "negative_value_policy",
+    ] = "replace_sentinel_-1_and_-100_with_NaN_keep_other_in_range_negatives"
     return merged
 
 
@@ -549,7 +570,12 @@ def dataframe_to_markdown_like(df: pd.DataFrame) -> str:
 
 
 def build_cleaned_dataset(df: pd.DataFrame, mapping_df: pd.DataFrame, value_columns: list[str]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    cleaned_df = df.copy()
+    cleaned_df = df.copy().reset_index(drop=True)
+    sequential_idx = np.arange(1, len(cleaned_df) + 1, dtype=int)
+    if "Idx" in cleaned_df.columns:
+        cleaned_df["Idx"] = sequential_idx
+    else:
+        cleaned_df.insert(0, "Idx", sequential_idx)
     cleaned_df["duplicate_timestamp_flag"] = cleaned_df.duplicated(subset=["TrendDate"], keep=False)
     cleaned_df["full_duplicate_row_flag"] = cleaned_df.duplicated(keep=False)
 
@@ -593,13 +619,25 @@ def build_cleaned_dataset(df: pd.DataFrame, mapping_df: pd.DataFrame, value_colu
     for column in value_columns:
         original_series = cleaned_df[column].copy()
         invalid_mask = original_series.isna()
+        invalid_reason = pd.Series("", index=cleaned_df.index, dtype="object")
+
+        if original_series.isna().any():
+            invalid_reason = invalid_reason.mask(original_series.isna(), "source_nan")
 
         if column in physical_or_nonnegative_columns:
-            invalid_mask = invalid_mask | (original_series < 0)
+            negative_not_allowed_mask = original_series < 0
+            invalid_mask = invalid_mask | negative_not_allowed_mask
+            invalid_reason = invalid_reason.mask(negative_not_allowed_mask, "negative_not_allowed")
         if column in bounded_percentage_columns:
-            invalid_mask = invalid_mask | (original_series < 0) | (original_series > 100)
+            bounded_percentage_mask = (original_series < 0) | (original_series > 100)
+            invalid_mask = invalid_mask | bounded_percentage_mask
+            invalid_reason = invalid_reason.mask(bounded_percentage_mask, "bounded_percentage_out_of_range")
         if column in bounded_score_columns:
-            invalid_mask = invalid_mask | (original_series < -100) | (original_series > 100)
+            bounded_score_range_mask = (original_series < -100) | (original_series > 100)
+            sentinel_na_mask = original_series.isin(BOUND_SCORE_SENTINEL_NA_VALUES.get(column, set()))
+            invalid_mask = invalid_mask | bounded_score_range_mask | sentinel_na_mask
+            invalid_reason = invalid_reason.mask(bounded_score_range_mask, "bounded_score_out_of_range")
+            invalid_reason = invalid_reason.mask(sentinel_na_mask, "bounded_score_sentinel")
 
         cleaned_series = original_series.mask(invalid_mask)
         interpolated_mask = pd.Series(False, index=cleaned_df.index)
@@ -638,12 +676,14 @@ def build_cleaned_dataset(df: pd.DataFrame, mapping_df: pd.DataFrame, value_colu
             flagged["is_outlier"] = outlier_mask.loc[flagged_mask].values
             flagged["is_interpolated"] = interpolated_mask.loc[flagged_mask].values
             flagged["classification"] = mapping_lookup.get(column, {}).get("guessed_type", "unknown")
+            flagged["invalid_reason"] = invalid_reason.loc[flagged_mask].values
             flag_rows.append(flagged)
 
         summary_rows.append(
             {
                 "column_name": column,
                 "invalid_count": int(invalid_mask.sum()),
+                "nan_replacement_count": int((cleaned_series.isna() & original_series.notna()).sum()),
                 "outlier_count": int(outlier_mask.sum()),
                 "interpolated_count": int(interpolated_mask.sum()),
             }
@@ -666,6 +706,7 @@ def build_cleaned_dataset(df: pd.DataFrame, mapping_df: pd.DataFrame, value_colu
             "is_outlier",
             "is_interpolated",
             "classification",
+            "invalid_reason",
         ]
     )
     cleaning_summary_df = pd.DataFrame(summary_rows).sort_values("column_name", key=lambda s: s.str.extract(r"(\d+)").astype(int)[0])
@@ -689,12 +730,59 @@ def compute_process_behavior_checks(df: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def deduplicate_cleaned_rows(df: pd.DataFrame, value_columns: list[str]) -> tuple[pd.DataFrame, pd.Index, int, int, int]:
+    subset = ["TrendDate"] + value_columns
+    duplicate_keep_first_mask = df.duplicated(subset=subset, keep="first")
+    deduplicated_df = df.loc[~duplicate_keep_first_mask].copy().reset_index(drop=True)
+    kept_index = df.index[~duplicate_keep_first_mask]
+
+    conflicting_rows = 0
+    conflicting_groups = 0
+    for _, group in deduplicated_df.groupby("TrendDate", sort=False):
+        if len(group) > 1 and len(group[value_columns].drop_duplicates()) > 1:
+            conflicting_rows += len(group)
+            conflicting_groups += 1
+
+    return deduplicated_df, kept_index, int(duplicate_keep_first_mask.sum()), conflicting_rows, conflicting_groups
+
+
+def summarize_conflicting_timestamps(df: pd.DataFrame, value_columns: list[str]) -> pd.DataFrame:
+    rows = []
+    for trend_date, group in df.groupby("TrendDate", sort=True):
+        if len(group) <= 1:
+            continue
+
+        differing_columns = []
+        for column in value_columns:
+            if group[column].nunique(dropna=False) > 1:
+                differing_columns.append(column)
+
+        if not differing_columns:
+            continue
+
+        rows.append(
+            {
+                "TrendDate": trend_date,
+                "row_count": int(len(group)),
+                "differing_column_count": int(len(differing_columns)),
+                "differing_columns": ", ".join(differing_columns),
+            }
+        )
+
+    return pd.DataFrame(rows)
+
+
 def write_summary_markdown(
     df: pd.DataFrame,
     mapping_df: pd.DataFrame,
     basic_stats_df: pd.DataFrame,
     cleaning_summary_df: pd.DataFrame,
     process_checks_df: pd.DataFrame,
+    conflicting_timestamp_summary_df: pd.DataFrame,
+    value_columns: list[str],
+    exact_duplicates_removed: int,
+    conflicting_rows_retained: int,
+    conflicting_groups_retained: int,
 ) -> None:
     active_columns = mapping_df.loc[mapping_df["status"] == "ACTIVE", "column_name"].tolist()
     inactive_columns = mapping_df.loc[mapping_df["status"] == "INACTIVE", "column_name"].tolist()
@@ -727,8 +815,8 @@ This folder contains the reproducible work for the sensor-identification and cle
 
 ## Dataset overview
 
-- Rows: {len(df)}
-- Value columns present: {len([col for col in df.columns if col.startswith("Val_")])}
+- Rows after exact deduplication: {len(df)}
+- Value columns present: {len(value_columns)}
 - Duplicate timestamps: {duplicate_timestamps}
 - Active sensors: {len(active_columns)}
 - Inactive sensors: {len(inactive_columns)}
@@ -739,12 +827,21 @@ This folder contains the reproducible work for the sensor-identification and cle
 
 ## Cleaning notes
 
-- Rows were not deleted.
-- Duplicate timestamps were kept and flagged in the cleaned dataset.
+- Exact duplicate rows were removed from the cleaned dataset using `TrendDate + all Val_X columns`.
+- Exact duplicate rows removed: {exact_duplicates_removed}
+- Same-timestamp conflicting rows retained: {conflicting_rows_retained} across {conflicting_groups_retained} timestamp groups.
+- Duplicate timestamps that remain in the cleaned dataset are only retained when values differ.
 - Negative values were only considered invalid for channels classified as non-negative physical or percentage-like signals.
-- Bounded score/deviation channels that legitimately span `-100..100` were preserved.
+- Sentinel values `-1` and `-100` in bounded score/deviation channels `Val_38`, `Val_46`, `Val_47`, and `Val_48` are replaced with `NaN`.
+- Other in-range negative values in bounded score/deviation channels are preserved.
 - Interpolation is limited to short gaps (up to 3 samples) in active physical or slow-process channels only.
 - Outliers are flagged using a rolling robust threshold; they are not overwritten.
+
+## Retained same-timestamp conflicts
+
+These rows were kept because the timestamp is the same but the sensor values are not identical, so they are not full duplicates.
+
+{dataframe_to_markdown_like(conflicting_timestamp_summary_df) if not conflicting_timestamp_summary_df.empty else "(no retained same-timestamp conflicts)"}
 
 ## Process behavior validation
 
@@ -764,50 +861,99 @@ This folder contains the reproducible work for the sensor-identification and cle
 def main() -> None:
     ensure_dirs([RESULTS_DIR, PLOTS_DIR, CLEANED_DIR])
 
-    df = load_dataset()
-    value_columns = sort_val_columns([column for column in df.columns if column.startswith("Val_")])
+    raw_df = load_dataset()
+    value_columns = sort_val_columns([column for column in raw_df.columns if column.startswith("Val_")])
 
-    basic_stats_df = compute_basic_stats(df, value_columns)
+    initial_stats_df = compute_basic_stats(raw_df, value_columns)
+    initial_mapping_df = build_mapping_table(initial_stats_df)
+    initial_cleaned_df, _, _ = build_cleaned_dataset(raw_df, initial_mapping_df, value_columns)
+
+    (
+        deduplicated_cleaned_preview_df,
+        kept_index,
+        exact_duplicates_removed,
+        conflicting_rows_retained,
+        conflicting_groups_retained,
+    ) = deduplicate_cleaned_rows(initial_cleaned_df, value_columns)
+
+    deduplicated_raw_df = raw_df.loc[kept_index].copy().reset_index(drop=True)
+    basic_stats_df = compute_basic_stats(deduplicated_cleaned_preview_df, value_columns)
     mapping_df = build_mapping_table(basic_stats_df)
     active_columns = mapping_df.loc[mapping_df["status"] == "ACTIVE", "column_name"].tolist()
     inactive_columns = mapping_df.loc[mapping_df["status"] == "INACTIVE", "column_name"].tolist()
 
-    corr_df, top_corr_df = compute_top_correlations(df, active_columns)
+    cleaned_df, cleaning_log_df, cleaning_summary_df = build_cleaned_dataset(deduplicated_raw_df, mapping_df, value_columns)
+    conflicting_timestamp_summary_df = summarize_conflicting_timestamps(cleaned_df, value_columns)
+
+    corr_df, top_corr_df = compute_top_correlations(cleaned_df, active_columns)
     correlation_clusters_df = compute_correlation_clusters(corr_df, threshold=0.95)
-    process_checks_df = compute_process_behavior_checks(df)
-    cleaned_df, cleaning_log_df, cleaning_summary_df = build_cleaned_dataset(df, mapping_df, value_columns)
+    process_checks_df = compute_process_behavior_checks(cleaned_df)
 
     key_sensors_df = mapping_df.loc[
         mapping_df["column_name"].isin(["Val_1", "Val_5", "Val_6", "Val_7", "Val_8", "Val_9", "Val_10", "Val_11", "Val_27", "Val_28", "Val_29", "Val_30", "Val_31", "Val_32"]),
         ["column_name", "guessed_type", "confidence", "reason"],
     ]
 
-    basic_stats_df.to_csv(RESULTS_DIR / "basic_stats.csv", index=False)
-    mapping_df.to_csv(RESULTS_DIR / "sensor_mapping_table.csv", index=False)
-    pd.DataFrame({"column_name": active_columns}).to_csv(RESULTS_DIR / "active_sensors.csv", index=False)
-    pd.DataFrame({"column_name": inactive_columns}).to_csv(RESULTS_DIR / "inactive_sensors.csv", index=False)
-    key_sensors_df.to_csv(RESULTS_DIR / "key_sensors.csv", index=False)
-    corr_df.to_csv(RESULTS_DIR / "correlation_matrix.csv")
-    top_corr_df.to_csv(RESULTS_DIR / "top_correlations.csv", index=False)
-    correlation_clusters_df.to_csv(RESULTS_DIR / "correlation_clusters.csv", index=False)
-    process_checks_df.to_csv(RESULTS_DIR / "process_behavior_checks.csv", index=False)
-    cleaning_log_df.to_csv(RESULTS_DIR / "cleaning_log.csv", index=False)
-    cleaning_summary_df.to_csv(RESULTS_DIR / "cleaning_summary_by_column.csv", index=False)
-    cleaned_df.to_csv(CLEANED_DIR / "tab_actual_export_cleaned.csv", index=False)
+    mapping_with_cleaning_df = mapping_df.merge(
+        cleaning_summary_df[["column_name", "nan_replacement_count"]],
+        on="column_name",
+        how="left",
+    )
+    mapping_with_cleaning_df["nan_replacement_count"] = (
+        mapping_with_cleaning_df["nan_replacement_count"].fillna(0).astype(int)
+    )
+    simplified_mapping_df = mapping_with_cleaning_df[
+        [
+            "column_name",
+            "status",
+            "guessed_type",
+            "confidence",
+            "reason",
+            "role_group",
+            "negative_value_policy",
+            "min",
+            "max",
+            "mean",
+            "std",
+            "pct_zero",
+            "pct_negative",
+            "n_unique",
+        ]
+    ].copy()
 
-    plot_each_sensor(df, value_columns, PLOTS_DIR)
-    plot_groups(df, PLOTS_DIR)
+    basic_stats_df.to_csv(RESULTS_DIR / "basic_stats.csv", index=False, na_rep="NaN")
+    mapping_with_cleaning_df.to_csv(RESULTS_DIR / "sensor_mapping_table.csv", index=False, na_rep="NaN")
+    simplified_mapping_df.to_csv(RESULTS_DIR / "sensor_mapping_table_simplified.csv", index=False, na_rep="NaN")
+    pd.DataFrame({"column_name": active_columns}).to_csv(RESULTS_DIR / "active_sensors.csv", index=False, na_rep="NaN")
+    pd.DataFrame({"column_name": inactive_columns}).to_csv(RESULTS_DIR / "inactive_sensors.csv", index=False, na_rep="NaN")
+    key_sensors_df.to_csv(RESULTS_DIR / "key_sensors.csv", index=False, na_rep="NaN")
+    corr_df.to_csv(RESULTS_DIR / "correlation_matrix.csv", na_rep="NaN")
+    top_corr_df.to_csv(RESULTS_DIR / "top_correlations.csv", index=False, na_rep="NaN")
+    correlation_clusters_df.to_csv(RESULTS_DIR / "correlation_clusters.csv", index=False, na_rep="NaN")
+    processChecksPath = RESULTS_DIR / "process_behavior_checks.csv"
+    process_checks_df.to_csv(processChecksPath, index=False, na_rep="NaN")
+    cleaning_log_df.to_csv(RESULTS_DIR / "cleaning_log.csv", index=False, na_rep="NaN")
+    cleaning_summary_df.to_csv(RESULTS_DIR / "cleaning_summary_by_column.csv", index=False, na_rep="NaN")
+    cleaned_df.to_csv(CLEANED_DIR / "tab_actual_export_cleaned.csv", index=False, na_rep="NaN")
+
+    plot_each_sensor(cleaned_df, value_columns, PLOTS_DIR)
+    plot_groups(cleaned_df, PLOTS_DIR)
     plot_correlation_heatmap(corr_df, PLOTS_DIR / "correlation_heatmap.png")
 
     overview = {
         "dataset_path": str(DATASET_PATH),
-        "row_count": int(len(df)),
+        "raw_row_count": int(len(raw_df)),
+        "row_count": int(len(cleaned_df)),
         "value_column_count": int(len(value_columns)),
-        "start": df["TrendDate"].min().isoformat() if df["TrendDate"].notna().any() else None,
-        "end": df["TrendDate"].max().isoformat() if df["TrendDate"].notna().any() else None,
-        "duplicate_timestamp_count": int(df.duplicated(subset=["TrendDate"]).sum()),
+        "start": cleaned_df["TrendDate"].min().isoformat() if cleaned_df["TrendDate"].notna().any() else None,
+        "end": cleaned_df["TrendDate"].max().isoformat() if cleaned_df["TrendDate"].notna().any() else None,
+        "duplicate_timestamp_count": int(cleaned_df.duplicated(subset=["TrendDate"]).sum()),
+        "exact_duplicates_removed": int(exact_duplicates_removed),
+        "same_timestamp_conflicting_rows_retained": int(conflicting_rows_retained),
+        "same_timestamp_conflicting_groups_retained": int(conflicting_groups_retained),
         "active_sensor_count": int(len(active_columns)),
         "inactive_sensor_count": int(len(inactive_columns)),
+        "nan_replacement_total": int(cleaning_summary_df["nan_replacement_count"].sum()),
         "key_sensors": {
             "screw_speed": "Val_1",
             "pressure": "Val_6",
@@ -817,7 +963,18 @@ def main() -> None:
     }
     (RESULTS_DIR / "overview.json").write_text(json.dumps(overview, indent=2), encoding="utf-8")
 
-    write_summary_markdown(df, mapping_df, basic_stats_df, cleaning_summary_df, process_checks_df)
+    write_summary_markdown(
+        cleaned_df,
+        mapping_df,
+        basic_stats_df,
+        cleaning_summary_df,
+        process_checks_df,
+        conflicting_timestamp_summary_df,
+        value_columns,
+        exact_duplicates_removed,
+        conflicting_rows_retained,
+        conflicting_groups_retained,
+    )
 
     print("Created sensor mapping outputs in:", BASE_DIR)
     print("Cleaned dataset:", CLEANED_DIR / "tab_actual_export_cleaned.csv")
