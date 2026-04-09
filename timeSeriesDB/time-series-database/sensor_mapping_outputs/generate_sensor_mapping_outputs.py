@@ -376,6 +376,48 @@ BOUND_SCORE_SENTINEL_NA_VALUES = {
     "Val_48": {-100.0, -1.0},
 }
 
+FINAL_CORE_SENSORS = [
+    "Val_1",
+    "Val_5",
+    "Val_6",
+    "Val_7",
+    "Val_8",
+    "Val_9",
+    "Val_10",
+    "Val_11",
+    "Val_27",
+    "Val_28",
+    "Val_29",
+    "Val_30",
+    "Val_31",
+    "Val_32",
+]
+
+FINAL_SUPPORTING_SENSORS = [
+    "Val_2",
+    "Val_3",
+    "Val_4",
+    "Val_19",
+    "Val_20",
+    "Val_33",
+]
+
+FINAL_REDUNDANT_KEEP_SENSOR = "Val_33"
+FINAL_REDUNDANT_EXCLUDED_SENSOR = "Val_34"
+
+FINAL_SCORE_LIKE_EXCLUDED_SENSORS = [
+    "Val_38",
+    "Val_39",
+    "Val_40",
+    "Val_42",
+    "Val_43",
+    "Val_44",
+    "Val_45",
+    "Val_46",
+    "Val_47",
+    "Val_48",
+]
+
 
 def ensure_dirs(paths: Iterable[Path]) -> None:
     for path in paths:
@@ -459,6 +501,90 @@ def build_mapping_table(stats_df: pd.DataFrame) -> pd.DataFrame:
         "negative_value_policy",
     ] = "replace_sentinel_-1_and_-100_with_NaN_keep_other_in_range_negatives"
     return merged
+
+
+def build_final_sensor_selection(
+    mapping_df: pd.DataFrame,
+    value_columns: list[str],
+) -> tuple[pd.DataFrame, list[str], list[str], list[str]]:
+    core_sensors = [column for column in FINAL_CORE_SENSORS if column in value_columns]
+    supporting_sensors = [column for column in FINAL_SUPPORTING_SENSORS if column in value_columns]
+    excluded_sensors = [column for column in value_columns if column not in core_sensors and column not in supporting_sensors]
+
+    selection_df = mapping_df[
+        ["column_name", "status", "guessed_type", "confidence", "reason", "role_group"]
+    ].copy()
+
+    def classify_signal(row: pd.Series) -> str:
+        column = row["column_name"]
+        guessed_type = str(row["guessed_type"])
+        role_group = str(row["role_group"])
+
+        if column in {"Val_19", "Val_20", "Val_35", "Val_36"} or role_group == "control_or_setpoint" or "setpoint" in guessed_type:
+            return "control_or_setpoint"
+        if column in {FINAL_REDUNDANT_KEEP_SENSOR, FINAL_REDUNDANT_EXCLUDED_SENSOR} or role_group == "derived_slow":
+            return "derived_metric"
+        if column in FINAL_SCORE_LIKE_EXCLUDED_SENSORS or role_group in {"bounded_score", "bounded_percentage"}:
+            return "score_or_bounded_signal"
+        if row["status"] == "INACTIVE" or role_group == "inactive":
+            return "inactive_or_unused"
+        return "raw_physical"
+
+    def modeling_group(column: str) -> str:
+        if column in core_sensors:
+            return "core"
+        if column in supporting_sensors:
+            return "supporting"
+        return "excluded"
+
+    def decision_reason(row: pd.Series) -> str:
+        column = row["column_name"]
+        signal_class = row["signal_class"]
+
+        if column in core_sensors:
+            return "Core raw physical sensor selected for first-pass modeling"
+        if column in {"Val_2", "Val_3", "Val_4"}:
+            return "Optional raw physical support signal outside the core sensor set"
+        if column in {"Val_19", "Val_20"}:
+            return "Optional control/setpoint signal kept separate from the core physical sensor set"
+        if column == FINAL_REDUNDANT_KEEP_SENSOR:
+            return "Single optional derived representative retained; paired Val_34 excluded as redundant"
+        if column == FINAL_REDUNDANT_EXCLUDED_SENSOR:
+            return "Excluded as redundant with Val_33, which carries the same slow derived pattern"
+        if column in FINAL_SCORE_LIKE_EXCLUDED_SENSORS:
+            return "Excluded for first-pass modeling because it is a bounded or score-like derived signal"
+        if column in {"Val_35", "Val_36"}:
+            return "Excluded because this constant setpoint/limit signal is not informative for first-pass modeling"
+        if signal_class == "inactive_or_unused":
+            return "Excluded because channel is inactive or effectively unused"
+        return "Excluded from the first-pass modeling set"
+
+    selection_df["signal_class"] = selection_df.apply(classify_signal, axis=1)
+    selection_df["modeling_group"] = selection_df["column_name"].map(modeling_group)
+    selection_df["keep_for_modeling"] = selection_df["modeling_group"].map({"core": "yes", "supporting": "yes", "excluded": "no"})
+    selection_df["decision_reason"] = selection_df.apply(decision_reason, axis=1)
+    selection_df["modeling_group_order"] = selection_df["modeling_group"].map({"core": 0, "supporting": 1, "excluded": 2})
+    selection_df["column_order"] = selection_df["column_name"].str.extract(r"(\d+)").astype(int)[0]
+    selection_df = selection_df.sort_values(["modeling_group_order", "column_order"]).drop(columns=["modeling_group_order", "column_order"])
+
+    return (
+        selection_df[
+            [
+                "column_name",
+                "signal_class",
+                "modeling_group",
+                "keep_for_modeling",
+                "guessed_type",
+                "role_group",
+                "confidence",
+                "reason",
+                "decision_reason",
+            ]
+        ],
+        core_sensors,
+        supporting_sensors,
+        excluded_sensors,
+    )
 
 
 def compute_top_correlations(df: pd.DataFrame, active_columns: list[str]) -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -577,7 +703,6 @@ def build_cleaned_dataset(df: pd.DataFrame, mapping_df: pd.DataFrame, value_colu
     else:
         cleaned_df.insert(0, "Idx", sequential_idx)
     cleaned_df["duplicate_timestamp_flag"] = cleaned_df.duplicated(subset=["TrendDate"], keep=False)
-    cleaned_df["full_duplicate_row_flag"] = cleaned_df.duplicated(keep=False)
 
     mapping_lookup = mapping_df.set_index("column_name").to_dict(orient="index")
     flag_rows = []
@@ -689,11 +814,29 @@ def build_cleaned_dataset(df: pd.DataFrame, mapping_df: pd.DataFrame, value_colu
             }
         )
 
-    flags_df = pd.DataFrame(flag_columns, index=cleaned_df.index)
+    invalid_flag_columns = [f"{column}_is_invalid" for column in value_columns]
+    outlier_flag_columns = [f"{column}_is_outlier" for column in value_columns]
+    interpolated_flag_columns = [f"{column}_is_interpolated" for column in value_columns]
+    ordered_flag_columns = invalid_flag_columns + outlier_flag_columns + interpolated_flag_columns
+    flags_df = pd.DataFrame(flag_columns, index=cleaned_df.index)[ordered_flag_columns]
     cleaned_df = pd.concat([cleaned_df, flags_df], axis=1)
     cleaned_df["row_has_invalid"] = row_has_invalid
     cleaned_df["row_has_outlier"] = row_has_outlier
     cleaned_df["row_has_interpolated"] = row_has_interpolated
+    cleaned_df = cleaned_df[
+        [
+            "Idx",
+            "TrendDate",
+            *value_columns,
+            "duplicate_timestamp_flag",
+            "row_has_invalid",
+            "row_has_outlier",
+            "row_has_interpolated",
+            *invalid_flag_columns,
+            *outlier_flag_columns,
+            *interpolated_flag_columns,
+        ]
+    ]
 
     cleaning_log_df = pd.concat(flag_rows, ignore_index=True) if flag_rows else pd.DataFrame(
         columns=[
@@ -779,6 +922,10 @@ def write_summary_markdown(
     cleaning_summary_df: pd.DataFrame,
     process_checks_df: pd.DataFrame,
     conflicting_timestamp_summary_df: pd.DataFrame,
+    final_selection_df: pd.DataFrame,
+    core_sensors: list[str],
+    supporting_sensors: list[str],
+    excluded_sensors: list[str],
     value_columns: list[str],
     exact_duplicates_removed: int,
     conflicting_rows_retained: int,
@@ -801,6 +948,10 @@ This folder contains the reproducible work for the sensor-identification and cle
 - `generate_sensor_mapping_outputs.py`: reproducible script used to create every result in this folder.
 - `results/basic_stats.csv`: min, max, mean, std, zero ratio, negative ratio, change ratio, and other descriptive statistics for each `Val_X`.
 - `results/sensor_mapping_table.csv`: final mapping table with guessed sensor type, confidence, and reasoning.
+- `results/final_sensor_selection.csv`: final modeling decision with signal class and core/supporting/excluded assignment.
+- `results/final_core_sensors.csv`: final core sensor list for first-pass modeling.
+- `results/final_supporting_sensors.csv`: optional supporting sensor list for first-pass modeling.
+- `results/final_excluded_sensors.csv`: excluded sensors for the first-pass modeling pass.
 - `results/active_sensors.csv`: active sensor list.
 - `results/inactive_sensors.csv`: inactive sensor list.
 - `results/key_sensors.csv`: identified key sensors for screw speed, pressure, motor load/current, and temperature zones.
@@ -824,6 +975,15 @@ This folder contains the reproducible work for the sensor-identification and cle
 ## Key sensor identification
 
     {dataframe_to_markdown_like(key_sensor_rows)}
+
+## Final modeling selection
+
+- Core sensors: {", ".join(core_sensors)}
+- Supporting sensors: {", ".join(supporting_sensors)}
+- Excluded sensors: {", ".join(excluded_sensors)}
+- Raw physical, control/setpoint, derived metric, and score/bounded signals are separated in `results/final_sensor_selection.csv`.
+- `Val_38` to `Val_48` are excluded for the first modeling pass.
+- `Val_33` is retained as the single optional derived representative; `Val_34` is excluded as redundant.
 
 ## Cleaning notes
 
@@ -881,6 +1041,7 @@ def main() -> None:
     mapping_df = build_mapping_table(basic_stats_df)
     active_columns = mapping_df.loc[mapping_df["status"] == "ACTIVE", "column_name"].tolist()
     inactive_columns = mapping_df.loc[mapping_df["status"] == "INACTIVE", "column_name"].tolist()
+    final_selection_df, core_sensors, supporting_sensors, excluded_sensors = build_final_sensor_selection(mapping_df, value_columns)
 
     cleaned_df, cleaning_log_df, cleaning_summary_df = build_cleaned_dataset(deduplicated_raw_df, mapping_df, value_columns)
     conflicting_timestamp_summary_df = summarize_conflicting_timestamps(cleaned_df, value_columns)
@@ -924,6 +1085,10 @@ def main() -> None:
     basic_stats_df.to_csv(RESULTS_DIR / "basic_stats.csv", index=False, na_rep="NaN")
     mapping_with_cleaning_df.to_csv(RESULTS_DIR / "sensor_mapping_table.csv", index=False, na_rep="NaN")
     simplified_mapping_df.to_csv(RESULTS_DIR / "sensor_mapping_table_simplified.csv", index=False, na_rep="NaN")
+    final_selection_df.to_csv(RESULTS_DIR / "final_sensor_selection.csv", index=False, na_rep="NaN")
+    pd.DataFrame({"column_name": core_sensors}).to_csv(RESULTS_DIR / "final_core_sensors.csv", index=False, na_rep="NaN")
+    pd.DataFrame({"column_name": supporting_sensors}).to_csv(RESULTS_DIR / "final_supporting_sensors.csv", index=False, na_rep="NaN")
+    pd.DataFrame({"column_name": excluded_sensors}).to_csv(RESULTS_DIR / "final_excluded_sensors.csv", index=False, na_rep="NaN")
     pd.DataFrame({"column_name": active_columns}).to_csv(RESULTS_DIR / "active_sensors.csv", index=False, na_rep="NaN")
     pd.DataFrame({"column_name": inactive_columns}).to_csv(RESULTS_DIR / "inactive_sensors.csv", index=False, na_rep="NaN")
     key_sensors_df.to_csv(RESULTS_DIR / "key_sensors.csv", index=False, na_rep="NaN")
@@ -954,6 +1119,17 @@ def main() -> None:
         "active_sensor_count": int(len(active_columns)),
         "inactive_sensor_count": int(len(inactive_columns)),
         "nan_replacement_total": int(cleaning_summary_df["nan_replacement_count"].sum()),
+        "final_modeling_selection": {
+            "core_sensor_count": int(len(core_sensors)),
+            "supporting_sensor_count": int(len(supporting_sensors)),
+            "excluded_sensor_count": int(len(excluded_sensors)),
+            "core_sensors": core_sensors,
+            "supporting_sensors": supporting_sensors,
+            "excluded_sensors": excluded_sensors,
+            "retained_redundant_representative": FINAL_REDUNDANT_KEEP_SENSOR,
+            "excluded_redundant_sensor": FINAL_REDUNDANT_EXCLUDED_SENSOR,
+            "excluded_score_like_sensors": [column for column in FINAL_SCORE_LIKE_EXCLUDED_SENSORS if column in value_columns],
+        },
         "key_sensors": {
             "screw_speed": "Val_1",
             "pressure": "Val_6",
@@ -970,6 +1146,10 @@ def main() -> None:
         cleaning_summary_df,
         process_checks_df,
         conflicting_timestamp_summary_df,
+        final_selection_df,
+        core_sensors,
+        supporting_sensors,
+        excluded_sensors,
         value_columns,
         exact_duplicates_removed,
         conflicting_rows_retained,

@@ -7,6 +7,10 @@ This folder contains the reproducible work for the sensor-identification and cle
 - `generate_sensor_mapping_outputs.py`: reproducible script used to create every result in this folder.
 - `results/basic_stats.csv`: min, max, mean, std, zero ratio, negative ratio, change ratio, and other descriptive statistics for each `Val_X`.
 - `results/sensor_mapping_table.csv`: final mapping table with guessed sensor type, confidence, and reasoning.
+- `results/final_sensor_selection.csv`: final modeling decision with signal class and core/supporting/excluded assignment.
+- `results/final_core_sensors.csv`: final core sensor list for first-pass modeling.
+- `results/final_supporting_sensors.csv`: optional supporting sensor list for first-pass modeling.
+- `results/final_excluded_sensors.csv`: excluded sensors for the first-pass modeling pass.
 - `results/active_sensors.csv`: active sensor list.
 - `results/inactive_sensors.csv`: inactive sensor list.
 - `results/key_sensors.csv`: identified key sensors for screw speed, pressure, motor load/current, and temperature zones.
@@ -45,6 +49,15 @@ This folder contains the reproducible work for the sensor-identification and cle
 | Val_30      | temperature_zone_candidate      | high       | 21-185 range, smooth heating/cooling, strong thermal inertia                                            |
 | Val_31      | temperature_zone_candidate      | high       | 21-185 range, smooth heating/cooling, strong thermal inertia                                            |
 | Val_32      | temperature_zone_candidate      | high       | 24.5-182 range, smooth heating/cooling, strong thermal inertia                                          |
+
+## Final modeling selection
+
+- Core sensors: Val_1, Val_5, Val_6, Val_7, Val_8, Val_9, Val_10, Val_11, Val_27, Val_28, Val_29, Val_30, Val_31, Val_32
+- Supporting sensors: Val_2, Val_3, Val_4, Val_19, Val_20, Val_33
+- Excluded sensors: Val_12, Val_14, Val_15, Val_21, Val_22, Val_23, Val_34, Val_35, Val_36, Val_37, Val_38, Val_39, Val_40, Val_41, Val_42, Val_43, Val_44, Val_45, Val_46, Val_47, Val_48
+- Raw physical, control/setpoint, derived metric, and score/bounded signals are separated in `results/final_sensor_selection.csv`.
+- `Val_38` to `Val_48` are excluded for the first modeling pass.
+- `Val_33` is retained as the single optional derived representative; `Val_34` is excluded as redundant.
 
 ## Cleaning notes
 
