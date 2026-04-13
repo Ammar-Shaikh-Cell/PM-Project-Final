@@ -1,0 +1,4 @@
+pressure_regime,stable_run_count,evidence_strength,likely_primary_driver,material_signal_assessment,reason,setpoint_between_run_cv_Val19,process_ratio_between_run_cv_pressure_per_rpm,process_ratio_between_run_cv_load_per_pressure,thermal_between_run_cv_temperature_spread
+low,0,none,insufficient_data,cannot_assess_without_regime_runs,No retained stable runs in this regime.,NaN,NaN,NaN,NaN
+mid,1,limited,insufficient_data,no direct material sensor; attribution is indirect from process features,Too few stable runs for reliable driver attribution.,0.0,0.0,0.0,0.0
+high,280,moderate,machine_behavior_or_process_dynamics,no direct material sensor; attribution is indirect from process features,Normalized process-ratio variation dominates setpoint variation.,0.05267184100129482,0.06968623507540507,0.07087577675532168,0.02198501691751976

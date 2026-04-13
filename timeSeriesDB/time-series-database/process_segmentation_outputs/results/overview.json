@@ -1,62 +1,153 @@
 {
-  "input_cleaned_dataset_path": "C:\\Users\\adilm\\Desktop\\PM-Project-Final\\timeSeriesDB\\time-series-database\\sensor_mapping_outputs\\results\\cleaned\\tab_actual_export_cleaned.csv",
+  "input_cleaned_dataset_path": "C:\\Users\\AbdulRauf(AIEngineer\\OneDrive - Standardverzeichnis\\Desktop\\PM-Project - Copy\\timeSeriesDB\\time-series-database\\sensor_mapping_outputs\\results\\cleaned\\tab_actual_export_cleaned.csv",
   "input_cleaned_row_count": 30858,
   "analysis_row_count": 30849,
   "collapsed_duplicate_timestamp_groups": 9,
   "rows_removed_by_timestamp_collapse": 9,
   "window_config": {
-    "window_size_rows": 15,
-    "window_step_rows": 5,
+    "window_size_rows": 5,
+    "window_step_rows": 1,
     "nominal_sample_period_seconds": 60
   },
-  "window_count": 6167,
+  "window_count": 30845,
   "stable_run_config": {
     "speed_off_threshold": 0.5,
     "speed_on_threshold": 5.0,
     "stable_speed_mean_min": 20.0,
     "stable_speed_delta_max": 8.0,
     "stable_temperature_delta_max": 2.0,
+    "stable_pressure_per_rpm_cv_max": 0.1,
+    "stable_load_per_pressure_cv_max": 0.12,
+    "stable_pressure_per_rpm_delta_max": 0.6,
+    "stable_load_per_pressure_delta_max": 0.06,
+    "stable_front_rear_temp_gap_delta_max": 1.5,
+    "stable_pressure_to_temperature_delta_max": 0.8,
     "max_core_invalid_fraction": 0.05,
     "max_core_outlier_fraction": 0.2,
     "max_modeling_invalid_fraction": 0.05,
-    "min_stable_window_count": 3,
-    "min_stable_run_duration_minutes": 20.0,
-    "max_stable_gap_windows_bridge": 3
+    "min_stable_window_count": 1,
+    "min_stable_run_duration_minutes": 4.0,
+    "max_stable_gap_windows_bridge": 1
+  },
+  "pressure_regime_config": {
+    "low_max_exclusive": 280.0,
+    "mid_min_inclusive": 280.0,
+    "mid_max_inclusive": 320.0,
+    "high_min_exclusive": 320.0
   },
   "phase_segments": [
     {
       "phase_label": "off",
       "segment_count": 8,
-      "total_duration_minutes": 10391.55
+      "total_duration_minutes": 10407.55
     },
     {
       "phase_label": "ramp_down",
-      "segment_count": 10,
-      "total_duration_minutes": 255.14999999999998
+      "segment_count": 18,
+      "total_duration_minutes": 113.11666666666667
     },
     {
       "phase_label": "ramp_up",
-      "segment_count": 11,
-      "total_duration_minutes": 321.21666666666664
+      "segment_count": 22,
+      "total_duration_minutes": 176.15
     },
     {
       "phase_label": "stable_run",
-      "segment_count": 17,
-      "total_duration_minutes": 19564.3
+      "segment_count": 43,
+      "total_duration_minutes": 19701.383333333335
     },
     {
       "phase_label": "transition",
-      "segment_count": 23,
-      "total_duration_minutes": 435.3
+      "segment_count": 63,
+      "total_duration_minutes": 418.35
     }
   ],
-  "stable_phase_segment_count": 17,
-  "stable_run_count": 13,
-  "stable_duration_minutes_total": 19494.25,
+  "stable_phase_segment_count": 43,
+  "stable_run_count": 281,
+  "stable_duration_minutes_total": 19090.949999999997,
+  "pressure_regimes": [
+    {
+      "pressure_regime": "high",
+      "stable_run_count": 280,
+      "total_duration_minutes": 19086.95
+    },
+    {
+      "pressure_regime": "mid",
+      "stable_run_count": 1,
+      "total_duration_minutes": 4.0
+    }
+  ],
+  "regime_coverage_summary": [
+    {
+      "pressure_regime": "low",
+      "stable_run_count": 0,
+      "duration_minutes_total": 0.0,
+      "duration_share_of_all_stable_runs": 0.0,
+      "short_stable_run_count_lt_20m": 0,
+      "long_stable_run_count_gte_20m": 0,
+      "coverage_status": "missing"
+    },
+    {
+      "pressure_regime": "mid",
+      "stable_run_count": 1,
+      "duration_minutes_total": 4.0,
+      "duration_share_of_all_stable_runs": 0.00020952336054517982,
+      "short_stable_run_count_lt_20m": 1,
+      "long_stable_run_count_gte_20m": 0,
+      "coverage_status": "present"
+    },
+    {
+      "pressure_regime": "high",
+      "stable_run_count": 280,
+      "duration_minutes_total": 19086.949999999997,
+      "duration_share_of_all_stable_runs": 0.9997904766394549,
+      "short_stable_run_count_lt_20m": 38,
+      "long_stable_run_count_gte_20m": 242,
+      "coverage_status": "present"
+    }
+  ],
+  "regime_cause_attribution": [
+    {
+      "pressure_regime": "low",
+      "stable_run_count": 0,
+      "evidence_strength": "none",
+      "likely_primary_driver": "insufficient_data",
+      "material_signal_assessment": "cannot_assess_without_regime_runs",
+      "reason": "No retained stable runs in this regime.",
+      "setpoint_between_run_cv_Val19": NaN,
+      "process_ratio_between_run_cv_pressure_per_rpm": NaN,
+      "process_ratio_between_run_cv_load_per_pressure": NaN,
+      "thermal_between_run_cv_temperature_spread": NaN
+    },
+    {
+      "pressure_regime": "mid",
+      "stable_run_count": 1,
+      "evidence_strength": "limited",
+      "likely_primary_driver": "insufficient_data",
+      "material_signal_assessment": "no direct material sensor; attribution is indirect from process features",
+      "reason": "Too few stable runs for reliable driver attribution.",
+      "setpoint_between_run_cv_Val19": 0.0,
+      "process_ratio_between_run_cv_pressure_per_rpm": 0.0,
+      "process_ratio_between_run_cv_load_per_pressure": 0.0,
+      "thermal_between_run_cv_temperature_spread": 0.0
+    },
+    {
+      "pressure_regime": "high",
+      "stable_run_count": 280,
+      "evidence_strength": "moderate",
+      "likely_primary_driver": "machine_behavior_or_process_dynamics",
+      "material_signal_assessment": "no direct material sensor; attribution is indirect from process features",
+      "reason": "Normalized process-ratio variation dominates setpoint variation.",
+      "setpoint_between_run_cv_Val19": 0.05267184100129482,
+      "process_ratio_between_run_cv_pressure_per_rpm": 0.06968623507540507,
+      "process_ratio_between_run_cv_load_per_pressure": 0.07087577675532168,
+      "thermal_between_run_cv_temperature_spread": 0.02198501691751976
+    }
+  ],
   "cluster_metadata": {
-    "cluster_count": 5,
-    "selected_k": 5,
-    "silhouette_score": 0.5871165693916537
+    "cluster_count": 6,
+    "selected_k": 6,
+    "silhouette_score": 0.5384022980043294
   },
   "core_sensors": [
     "Val_1",
@@ -104,5 +195,16 @@
     "Val_46",
     "Val_47",
     "Val_48"
+  ],
+  "context_only_signals": [
+    "Val_19"
+  ],
+  "cluster_feature_columns": [
+    "mean_Val_1",
+    "mean_pressure_per_rpm",
+    "mean_load_per_pressure",
+    "mean_pressure_to_temperature",
+    "mean_front_rear_temp_gap",
+    "temperature_spread_mean"
   ]
 }
