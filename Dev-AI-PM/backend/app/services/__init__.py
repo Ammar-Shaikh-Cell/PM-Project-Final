@@ -14,10 +14,13 @@ from app.services import (
     user_service,
     webhook_service,
 )
+from app.live_evaluation import baseline_resolver, config_service as evaluation_config_service
 
 __all__ = [
     "alarm_service",
     "audit_service",
+    "baseline_resolver",
+    "evaluation_config_service",
     "feature_service",
     "machine_service",
     "notification_service",

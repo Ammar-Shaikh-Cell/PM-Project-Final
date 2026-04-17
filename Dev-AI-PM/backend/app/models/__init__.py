@@ -32,4 +32,12 @@ from app.models.profile import (
     ProfilePressureConfig,
 )
 from app.models.email_recipient import EmailRecipient
+from app.live_evaluation.models import (
+    MachineSensorRaw,
+    BaselineRegistry,
+    LiveProcessWindow,
+    LiveRunEvaluation,
+    LiveFeatureEvaluation,
+    EvaluationConfig,
+)
 
