@@ -69,9 +69,9 @@ def run_cycle() -> None:
     # only confirmed after 3 consecutive matching windows
     confirmed_state = detector.confirm_state(candidate_state)
     if confirmed_state is not None:
-        logging.info("✅ Confirmed state: %s", confirmed_state)
+        logging.info("Confirmed state: %s", confirmed_state)
     else:
-        logging.info("⏳ Waiting for state confirmation...")
+        logging.info("Waiting for state confirmation...")
 
     # Step 7 — Save features to DB.
     # persist window features every cycle for history/analysis
@@ -108,7 +108,7 @@ def run_cycle() -> None:
 
 
 if __name__ == "__main__":
-    logging.info("🚀 Live monitoring pipeline started...")
+    logging.info("Live monitoring pipeline started...")
     # Ctrl+C to stop the pipeline cleanly
     try:
         while True:

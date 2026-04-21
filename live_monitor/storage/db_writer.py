@@ -97,7 +97,7 @@ class DBWriter:
             session.add(feature_row)
             session.commit()
             logging.info(
-                "✅ Features saved for window: %s → %s",
+                "Features saved for window: %s → %s",
                 features.get("window_start"),
                 features.get("window_end"),
             )
@@ -121,7 +121,7 @@ class DBWriter:
             session.add(state_row)
             session.commit()
             logging.info(
-                "✅ State saved: candidate=%s confirmed=%s",
+                "State saved: candidate=%s confirmed=%s",
                 candidate_state,
                 confirmed_state,
             )

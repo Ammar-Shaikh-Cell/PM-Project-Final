@@ -25,33 +25,33 @@ class StateDetector:
         temperature_trend = float(features.get("temperature_trend", 0.0))
         screw_speed_std = float(features.get("screw_speed_std", 0.0))
 
-        # machine is off, all values near zero
-        if screw_speed_mean < 10 and pressure_mean < 10 and load_mean < 10:
+        # machine fully off, all values near zero
+        if screw_speed_mean < 5 and pressure_mean < 20 and load_mean < 5:
             return "OFF"
 
-        # machine cooling down, speed/pressure low but temp still high and falling
+        # speed/pressure dropped but temperature still high and falling
         if (
-            screw_speed_mean < 20
-            and pressure_mean < 20
-            and temperature_mean > 150
+            screw_speed_mean < 10
+            and pressure_mean < 50
+            and temperature_mean > 100
             and temperature_trend < 0
         ):
             return "COOLING"
 
-        # machine running but below normal production levels
-        if 20 <= screw_speed_mean < 80 and 20 <= pressure_mean < 60:
+        # machine running below normal production levels
+        if 10 <= screw_speed_mean < 50 and 20 <= pressure_mean < 150:
             return "LOW_PRODUCTION"
 
-        # machine in full stable production, high speed/pressure, low variability
+        # machine in full production based on real extruder values
         if (
-            screw_speed_mean >= 80
-            and pressure_mean >= 60
-            and temperature_mean >= 180
-            and screw_speed_std < 15
+            screw_speed_mean >= 50
+            and pressure_mean >= 150
+            and temperature_mean >= 150
+            and screw_speed_std < 20
         ):
             return "PRODUCTION"
 
-        # fallback state when no rules match
+        # should rarely happen with tuned thresholds
         return "UNKNOWN"
 
     def confirm_state(self, candidate_state: str) -> str | None:

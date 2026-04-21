@@ -75,8 +75,9 @@ class FeatureEngine:
         load_per_pressure = 0.0 if pressure_mean == 0 else float(load_mean / pressure_mean)
 
         # Window boundaries help downstream components align decisions in time.
-        window_start = str(numeric_df["timestamp"].iloc[0])
-        window_end = str(numeric_df["timestamp"].iloc[-1])
+        # must be Python datetime objects for SQLite compatibility
+        window_start = pd.to_datetime(window_df["timestamp"].iloc[0]).to_pydatetime()
+        window_end = pd.to_datetime(window_df["timestamp"].iloc[-1]).to_pydatetime()
 
         return {
             "window_start": window_start,
