@@ -1,14 +1,16 @@
 """Central configuration for API, polling, and window settings."""
 
+import os
+
 # Real API settings
-API_URL = "http://100.119.197.81:8002/dashboard/extruder-latest-values"
-API_TIMEOUT_SECONDS = 5
+API_URL = os.getenv("API_URL", "http://100.119.197.81:8002/dashboard/extruder-latest-values")
+API_TIMEOUT_SECONDS = int(os.getenv("API_TIMEOUT_SECONDS", "5"))
 # no API key required for this endpoint
 # polls live extruder data every POLL_INTERVAL_SECONDS
-POLL_INTERVAL_SECONDS = 10  # how often we poll the API
+POLL_INTERVAL_SECONDS = int(os.getenv("POLL_INTERVAL_SECONDS", "10"))  # how often we poll the API
 
 # Rolling window settings
-WINDOW_DURATION_SECONDS = 180  # 3 minutes of data in buffer
+WINDOW_DURATION_SECONDS = int(os.getenv("WINDOW_DURATION_SECONDS", "180"))  # 3 minutes of data in buffer
 
 # Sensor field mapping (based on machine sensor mapping table)
 FIELD_TIMESTAMP = "TrendDate"
@@ -31,12 +33,12 @@ FIELD_TEMPERATURE_ZONES = [
 # temperature = average of all 11 zone sensors
 
 # State confirmation
-CONFIRMATION_WINDOWS = 3  # consecutive windows needed to confirm state
+CONFIRMATION_WINDOWS = int(os.getenv("CONFIRMATION_WINDOWS", "3"))  # consecutive windows needed to confirm state
 
 # Database (stub for now)
-DB_CONNECTION_STRING = "sqlite:///live_monitor.db"  # replace with real DB later
+DB_CONNECTION_STRING = os.getenv("DB_CONNECTION_STRING", "sqlite:///live_monitor.db")  # replace with real DB later
 
 # Output API (where we POST processed window features)
-OUTPUT_API_URL = "http://localhost:8002/window-features"
-OUTPUT_API_TIMEOUT = 5
+OUTPUT_API_URL = os.getenv("OUTPUT_API_URL", "http://localhost:8002/window-features")
+OUTPUT_API_TIMEOUT = int(os.getenv("OUTPUT_API_TIMEOUT", "5"))
 # pipeline posts calculated window features to this endpoint

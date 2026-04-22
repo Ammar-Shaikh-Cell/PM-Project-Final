@@ -1,0 +1,18 @@
+services:
+  live-monitor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: live-monitor
+    restart: unless-stopped
+    environment:
+      API_URL: "http://100.119.197.81:8002/dashboard/extruder-latest-values"
+      API_TIMEOUT_SECONDS: "5"
+      POLL_INTERVAL_SECONDS: "10"
+      WINDOW_DURATION_SECONDS: "180"
+      CONFIRMATION_WINDOWS: "3"
+      DB_CONNECTION_STRING: "sqlite:///live_monitor.db"
+      OUTPUT_API_URL: "http://host.docker.internal:8002/window-features"
+      OUTPUT_API_TIMEOUT: "5"
+    volumes:
+      - ./live_monitor.db:/app/live_monitor.db

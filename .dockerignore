@@ -1,0 +1,10 @@
+.git
+.gitignore
+**/__pycache__/
+**/*.pyc
+.cursor/
+node_modules/
+venv/
+my-env/
+*.ipynb
+live_monitor.db
