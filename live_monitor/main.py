@@ -80,6 +80,12 @@ def run_cycle() -> None:
     except Exception as exc:  # pragma: no cover - runtime DB safety
         logging.warning("Failed to save features to DB: %s", exc)
 
+    # also post features to external API
+    try:
+        writer.post_features_to_api(features)
+    except Exception as e:  # pragma: no cover - runtime API safety
+        logging.warning("post_features_to_api error: %s", e)
+
     # Step 8 — Save state to DB.
     # persist state every cycle, confirmed_state may be None
     try:

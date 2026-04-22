@@ -20,13 +20,13 @@ FIELD_TEMPERATURE_ZONES = [
     "Val_8",
     "Val_9",
     "Val_10",
-    "Val_11",
-    "Val_27",
-    "Val_28",
-    "Val_29",
-    "Val_30",
-    "Val_31",
-    "Val_32",
+    # "Val_11",
+    # "Val_27",
+    # "Val_28",
+    # "Val_29",
+    # "Val_30",
+    # "Val_31",
+    # "Val_32",
 ]
 # temperature = average of all 11 zone sensors
 
@@ -35,3 +35,8 @@ CONFIRMATION_WINDOWS = 3  # consecutive windows needed to confirm state
 
 # Database (stub for now)
 DB_CONNECTION_STRING = "sqlite:///live_monitor.db"  # replace with real DB later
+
+# Output API (where we POST processed window features)
+OUTPUT_API_URL = "http://localhost:8002/window-features"
+OUTPUT_API_TIMEOUT = 5
+# pipeline posts calculated window features to this endpoint

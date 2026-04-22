@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 
+import requests
 from sqlalchemy import Column, DateTime, Float, Integer, String, create_engine
 from sqlalchemy.orm import Session, declarative_base
 
@@ -139,3 +140,55 @@ class DBWriter:
             return session.query(MachineState).order_by(MachineState.created_at.desc()).first()
         finally:
             session.close()
+
+    def post_features_to_api(self, features: dict) -> None:
+        """Post calculated window features to an external API endpoint."""
+        # formats and posts window features to external API
+        try:
+            def to_iso(dt):
+                if isinstance(dt, str):
+                    return dt
+                if dt.tzinfo is not None:
+                    dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
+                # API expects ISO 8601 format with Z suffix
+                return dt.strftime("%Y-%m-%dT%H:%M:%S.000Z")
+
+            payload = {
+                "window_start": to_iso(features["window_start"]),
+                "window_end": to_iso(features["window_end"]),
+                "screw_speed_mean": features.get("screw_speed_mean", 0),
+                "screw_speed_std": features.get("screw_speed_std", 0),
+                "screw_speed_trend": features.get("screw_speed_trend", 0),
+                "pressure_mean": features.get("pressure_mean", 0),
+                "pressure_std": features.get("pressure_std", 0),
+                "pressure_trend": features.get("pressure_trend", 0),
+                "temperature_mean": features.get("temperature_mean", 0),
+                "temperature_std": features.get("temperature_std", 0),
+                "temperature_trend": features.get("temperature_trend", 0),
+                "load_mean": features.get("load_mean", 0),
+                "load_std": features.get("load_std", 0),
+                "load_trend": features.get("load_trend", 0),
+                "pressure_per_rpm": features.get("pressure_per_rpm", 0),
+                "temp_spread": features.get("temp_spread", 0),
+                "load_per_pressure": features.get("load_per_pressure", 0),
+                # id=0 means DB will auto-assign on insert
+                "id": 0,
+            }
+
+            response = requests.post(
+                config.OUTPUT_API_URL,
+                json=payload,
+                timeout=config.OUTPUT_API_TIMEOUT,
+            )
+
+            if response.status_code in (200, 201):
+                logging.info("Window features posted to API successfully")
+            else:
+                logging.warning(
+                    "API post failed: status=%s body=%s",
+                    response.status_code,
+                    response.text,
+                )
+        except Exception as e:  # pragma: no cover - runtime API safety
+            # never crash the pipeline on API post failure
+            logging.warning("Failed to post features to API: %s", e)
