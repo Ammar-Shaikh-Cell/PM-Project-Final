@@ -75,10 +75,10 @@ def run_cycle() -> None:
 
     # Step 7 — Save features to DB.
     # persist window features every cycle for history/analysis
-    try:
-        writer.save_features(features)
-    except Exception as exc:  # pragma: no cover - runtime DB safety
-        logging.warning("Failed to save features to DB: %s", exc)
+  #  try:
+  #      writer.save_features(features)
+  #  except Exception as exc:  # pragma: no cover - runtime DB safety
+  #      logging.warning("Failed to save features to DB: %s", exc)
 
     # also post features to external API
     try:
@@ -88,15 +88,15 @@ def run_cycle() -> None:
 
     # Step 8 — Save state to DB.
     # persist state every cycle, confirmed_state may be None
-    try:
-        writer.save_state(
-            window_start=features["window_start"],
-            window_end=features["window_end"],
-            candidate_state=candidate_state,
-            confirmed_state=confirmed_state,
-        )
-    except Exception as exc:  # pragma: no cover - runtime DB safety
-        logging.warning("Failed to save state to DB: %s", exc)
+# try:
+#        writer.save_state(
+   #         window_start=features["window_start"],
+   #         window_end=features["window_end"],
+#            candidate_state=candidate_state,
+#            confirmed_state=confirmed_state,
+#        )
+#    except Exception as exc:  # pragma: no cover - runtime DB safety
+#        logging.warning("Failed to save state to DB: %s", exc)
 
     # Step 9 — Log features summary.
     # quick snapshot of current window values
