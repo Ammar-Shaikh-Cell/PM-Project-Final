@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime
 import logging
 
-import requests
 from sqlalchemy import Column, DateTime, Float, Integer, String, create_engine
 from sqlalchemy.orm import Session, declarative_base
 
@@ -59,7 +58,130 @@ class MachineState(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
-# creates tables if they don't exist yet
+# stores historical baseline stats per feature per regime
+# used as reference for live vs baseline comparison
+class BaselineRegistry(Base):
+    """Reference baseline statistics used for live feature evaluation."""
+
+    __tablename__ = "baseline_registry"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    regime_type = Column(String)
+    profile_id = Column(Integer, nullable=True)
+    feature_name = Column(String)
+    mean_value = Column(Float)
+    std_value = Column(Float)
+    min_value = Column(Float)
+    max_value = Column(Float)
+    p10_value = Column(Float)
+    p90_value = Column(Float)
+    warning_low = Column(Float, nullable=True)
+    warning_high = Column(Float, nullable=True)
+    critical_low = Column(Float, nullable=True)
+    critical_high = Column(Float, nullable=True)
+    sample_count = Column(Integer)
+    source_run_count = Column(Integer)
+    baseline_confidence = Column(String)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow)
+
+
+# stores each rolling live window and its calculated features
+# live equivalent of historical windowed feature dataset
+class LiveProcessWindow(Base):
+    """Calculated live rolling-window feature and state snapshot."""
+
+    __tablename__ = "live_process_window"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    machine_id = Column(Integer, nullable=True)
+    line_id = Column(Integer, nullable=True)
+    production_run_id = Column(Integer, nullable=True)
+    window_start = Column(DateTime)
+    window_end = Column(DateTime)
+    row_count = Column(Integer)
+    valid_fraction = Column(Float)
+    invalid_fraction = Column(Float)
+    outlier_fraction = Column(Float)
+    avg_pressure = Column(Float)
+    avg_speed = Column(Float)
+    avg_temp = Column(Float)
+    avg_load = Column(Float)
+    min_pressure = Column(Float)
+    max_pressure = Column(Float)
+    min_speed = Column(Float)
+    max_speed = Column(Float)
+    pressure_std = Column(Float)
+    speed_std = Column(Float)
+    temp_std = Column(Float)
+    pressure_range = Column(Float)
+    speed_range = Column(Float)
+    temp_range = Column(Float)
+    pressure_slope = Column(Float)
+    speed_slope = Column(Float)
+    temp_slope = Column(Float)
+    pressure_per_rpm = Column(Float)
+    temp_spread = Column(Float)
+    load_per_pressure = Column(Float)
+    candidate_state = Column(String)
+    confirmed_state = Column(String, nullable=True)
+    confirmation_count = Column(Integer, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+# stores per-feature evaluation result for one live window
+# UI uses this to show which features are normal/warning/critical
+class LiveFeatureEvaluation(Base):
+    """Per-feature live-vs-baseline evaluation output."""
+
+    __tablename__ = "live_feature_evaluation"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    live_process_window_id = Column(Integer, nullable=True)
+    live_run_evaluation_id = Column(Integer, nullable=True)
+    feature_name = Column(String)
+    current_value = Column(Float)
+    baseline_id = Column(Integer, nullable=True)
+    baseline_mean = Column(Float, nullable=True)
+    baseline_std = Column(Float, nullable=True)
+    baseline_warning_low = Column(Float, nullable=True)
+    baseline_warning_high = Column(Float, nullable=True)
+    baseline_critical_low = Column(Float, nullable=True)
+    baseline_critical_high = Column(Float, nullable=True)
+    deviation_abs = Column(Float, nullable=True)
+    deviation_pct = Column(Float, nullable=True)
+    z_score = Column(Float, nullable=True)
+    feature_status = Column(String)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+# top-level evaluation result for one live window
+# main output for UI, reporting and alerts
+class LiveRunEvaluation(Base):
+    """Top-level evaluation outcome for one live process window."""
+
+    __tablename__ = "live_run_evaluation"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    live_process_window_id = Column(Integer, nullable=True)
+    machine_id = Column(Integer, nullable=True)
+    line_id = Column(Integer, nullable=True)
+    production_run_id = Column(Integer, nullable=True)
+    detected_state = Column(String)
+    active_regime = Column(String, nullable=True)
+    matched_profile_id = Column(Integer, nullable=True)
+    baseline_id = Column(Integer, nullable=True)
+    baseline_selection_method = Column(String, nullable=True)
+    evaluation_status = Column(String)
+    overall_status = Column(String, nullable=True)
+    stability_status = Column(String, nullable=True)
+    drift_score = Column(Float, nullable=True)
+    anomaly_score = Column(Float, nullable=True)
+    explanation_text = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+# creates new tables if they don't exist yet
 Base.metadata.create_all(engine)
 
 
@@ -108,6 +230,60 @@ class DBWriter:
         finally:
             session.close()
 
+    # saves current rolling window features to LiveProcessWindow table
+    # called every cycle after feature calculation and state detection
+    def save_live_process_window(self, features: dict, state_info: dict):
+        """Save one live rolling window row and return inserted object."""
+        session = Session(self.engine)
+        try:
+            live_window = LiveProcessWindow(
+                window_start=features["window_start"],
+                window_end=features["window_end"],
+                row_count=features.get("row_count", 0),
+                valid_fraction=features.get("valid_fraction", 1.0),
+                invalid_fraction=features.get("invalid_fraction", 0.0),
+                outlier_fraction=features.get("outlier_fraction", 0.0),
+                avg_pressure=features.get("pressure_mean"),
+                avg_speed=features.get("screw_speed_mean"),
+                avg_temp=features.get("temperature_mean"),
+                avg_load=features.get("load_mean"),
+                min_pressure=features.get("pressure_min"),
+                max_pressure=features.get("pressure_max"),
+                min_speed=features.get("screw_speed_min"),
+                max_speed=features.get("screw_speed_max"),
+                pressure_std=features.get("pressure_std"),
+                speed_std=features.get("screw_speed_std"),
+                temp_std=features.get("temperature_std"),
+                pressure_range=features.get("pressure_range"),
+                speed_range=features.get("screw_speed_range"),
+                temp_range=features.get("temperature_range"),
+                pressure_slope=features.get("pressure_trend"),
+                speed_slope=features.get("screw_speed_trend"),
+                temp_slope=features.get("temperature_trend"),
+                pressure_per_rpm=features.get("pressure_per_rpm"),
+                temp_spread=features.get("temp_spread"),
+                load_per_pressure=features.get("load_per_pressure"),
+                candidate_state=state_info.get("candidate_state"),
+                confirmed_state=state_info.get("confirmed_state"),
+                confirmation_count=state_info.get("confirmation_count", 0),
+            )
+            session.add(live_window)
+            session.commit()
+            session.refresh(live_window)
+            logging.info(
+                "LiveProcessWindow saved: id=%s state=%s",
+                live_window.id,
+                live_window.confirmed_state,
+            )
+            # return id is important -- evaluation tables link back to this
+            return live_window
+        except Exception as exc:  # pragma: no cover - runtime DB safety
+            session.rollback()
+            logging.warning("Failed to save LiveProcessWindow: %s", exc)
+            return None
+        finally:
+            session.close()
+
     def save_state(self, window_start, window_end, candidate_state, confirmed_state) -> None:
         """Save candidate/confirmed state output for one cycle."""
         # called after every state detection cycle
@@ -141,54 +317,3 @@ class DBWriter:
         finally:
             session.close()
 
-    def post_features_to_api(self, features: dict) -> None:
-        """Post calculated window features to an external API endpoint."""
-        # formats and posts window features to external API
-        try:
-            def to_iso(dt):
-                if isinstance(dt, str):
-                    return dt
-                if dt.tzinfo is not None:
-                    dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
-                # API expects ISO 8601 format with Z suffix
-                return dt.strftime("%Y-%m-%dT%H:%M:%S.000Z")
-
-            payload = {
-                "window_start": to_iso(features["window_start"]),
-                "window_end": to_iso(features["window_end"]),
-                "screw_speed_mean": features.get("screw_speed_mean", 0),
-                "screw_speed_std": features.get("screw_speed_std", 0),
-                "screw_speed_trend": features.get("screw_speed_trend", 0),
-                "pressure_mean": features.get("pressure_mean", 0),
-                "pressure_std": features.get("pressure_std", 0),
-                "pressure_trend": features.get("pressure_trend", 0),
-                "temperature_mean": features.get("temperature_mean", 0),
-                "temperature_std": features.get("temperature_std", 0),
-                "temperature_trend": features.get("temperature_trend", 0),
-                "load_mean": features.get("load_mean", 0),
-                "load_std": features.get("load_std", 0),
-                "load_trend": features.get("load_trend", 0),
-                "pressure_per_rpm": features.get("pressure_per_rpm", 0),
-                "temp_spread": features.get("temp_spread", 0),
-                "load_per_pressure": features.get("load_per_pressure", 0),
-                # id=0 means DB will auto-assign on insert
-                "id": 0,
-            }
-
-            response = requests.post(
-                config.OUTPUT_API_URL,
-                json=payload,
-                timeout=config.OUTPUT_API_TIMEOUT,
-            )
-
-            if response.status_code in (200, 201):
-                logging.info("Window features posted to API successfully")
-            else:
-                logging.warning(
-                    "API post failed: status=%s body=%s",
-                    response.status_code,
-                    response.text,
-                )
-        except Exception as e:  # pragma: no cover - runtime API safety
-            # never crash the pipeline on API post failure
-            logging.warning("Failed to post features to API: %s", e)

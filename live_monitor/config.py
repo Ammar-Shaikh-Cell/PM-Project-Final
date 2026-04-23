@@ -38,7 +38,3 @@ CONFIRMATION_WINDOWS = int(os.getenv("CONFIRMATION_WINDOWS", "3"))  # consecutiv
 # Database (stub for now)
 DB_CONNECTION_STRING = os.getenv("DB_CONNECTION_STRING", "sqlite:///live_monitor.db")  # replace with real DB later
 
-# Output API (where we POST processed window features)
-OUTPUT_API_URL = os.getenv("OUTPUT_API_URL", "http://localhost:8002/window-features")
-OUTPUT_API_TIMEOUT = int(os.getenv("OUTPUT_API_TIMEOUT", "5"))
-# pipeline posts calculated window features to this endpoint

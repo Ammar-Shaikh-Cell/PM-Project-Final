@@ -4,6 +4,7 @@ import logging
 import time
 
 import config
+from evaluation.evaluation_guard import EvaluationGuard
 from ingestion.api_client import APIClient
 from processing.feature_engine import FeatureEngine
 from processing.window_buffer import WindowBuffer
@@ -26,6 +27,8 @@ engine = FeatureEngine()
 detector = StateDetector()
 # handles saving features and state to database
 writer = DBWriter()
+# stateless, single instance reused every cycle
+guard = EvaluationGuard()
 
 
 def run_cycle() -> None:
@@ -73,18 +76,32 @@ def run_cycle() -> None:
     else:
         logging.info("Waiting for state confirmation...")
 
-    # Step 7 — Save features to DB.
-    # persist window features every cycle for history/analysis
-  #  try:
-  #      writer.save_features(features)
-  #  except Exception as exc:  # pragma: no cover - runtime DB safety
-  #      logging.warning("Failed to save features to DB: %s", exc)
+    # Step 6b — run evaluation guard
+    guard_result = guard.check(confirmed_state, features)
 
-    # also post features to external API
+    if guard_result["should_evaluate"]:
+        logging.info("Guard passed — proceeding to evaluation")
+    else:
+        logging.info("Evaluation skipped — reason: %s", guard_result["skip_reason"])
+
+    # store guard result, used in next steps
+    # we will pass this to baseline selector and evaluator in next prompts
+
+    # build state_info dict for window storage
+    state_info = {
+        "candidate_state": candidate_state,
+        "confirmed_state": confirmed_state,
+        "confirmation_count": len(detector.candidate_history),
+    }
+
+    # save window to LiveProcessWindow table
+    live_window = writer.save_live_process_window(features, state_info)
+
+    # keeping old WindowFeatures save for backward compatibility
     try:
-        writer.post_features_to_api(features)
-    except Exception as e:  # pragma: no cover - runtime API safety
-        logging.warning("post_features_to_api error: %s", e)
+        writer.save_features(features)
+    except Exception as exc:  # pragma: no cover - runtime DB safety
+        logging.warning("Failed to save features to DB: %s", exc)
 
     # Step 8 — Save state to DB.
     # persist state every cycle, confirmed_state may be None

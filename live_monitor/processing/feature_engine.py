@@ -82,6 +82,11 @@ class FeatureEngine:
         return {
             "window_start": window_start,
             "window_end": window_end,
+            # placeholder fractions for now, can be refined later
+            "row_count": len(window_df),
+            "valid_fraction": 1.0,
+            "invalid_fraction": 0.0,
+            "outlier_fraction": 0.0,
             "screw_speed_mean": screw_speed_mean,
             "screw_speed_std": screw_speed_std,
             "screw_speed_min": screw_speed_min,
