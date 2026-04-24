@@ -1,6 +1,6 @@
 import os
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 
 import numpy as np
 import pandas as pd
@@ -8,6 +8,15 @@ from sqlalchemy.orm import Session
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from storage.db_writer import BaselineRegistry, engine
+
+# path to historical stable runs from Stage 2 of PM-Project
+STABLE_RUNS_CSV = "timeSeriesDB/time-series-database/process_segmentation_outputs/results/stable_runs.csv"
+# TODO: update path if different in your project directory
+
+LOW_REGIME_CSV = "timeSeriesDB/time-series-database/process_segmentation_outputs/results/low_regime.csv"
+# LOW regime data from live production (pressure < 280 bar)
+# 4178 rows total, 3640 stable production rows used for baseline
+# TODO: update path if different in your project directory
 
 
 def get_confidence(run_count):
@@ -20,11 +29,94 @@ def get_confidence(run_count):
     # LOW confidence = provisional, use with caution
 
 
-def main() -> None:
-    # path to historical stable runs from Stage 2 of PM-Project
-    STABLE_RUNS_CSV = "timeSeriesDB/time-series-database/process_segmentation_outputs/results/stable_runs.csv"
-    # TODO: update path if different in your project directory
+def build_low_regime_baseline():
+    # builds LOW regime baseline from separate live CSV
+    #               filters stable rows: speed >= 20, pressure >= 50
+    #               calculates same features as historical pipeline
+    df = pd.read_csv(LOW_REGIME_CSV)
 
+    # filter stable production rows only
+    df = df[(df["speed"] >= 20) & (df["pressure"] >= 50)].copy()
+    # remove OFF/startup rows using same thresholds as historical
+
+    # calculate temperature mean from 4 zones
+    df["temperature_mean"] = df[["temp1", "temp2", "temp3", "temp4"]].mean(axis=1)
+    # average of 4 temperature zone sensors
+
+    # calculate derived features
+    df["pressure_per_rpm"] = df["pressure"] / df["speed"]
+    df["temp_spread"] = (
+        df[["temp1", "temp2", "temp3", "temp4"]].max(axis=1)
+        - df[["temp1", "temp2", "temp3", "temp4"]].min(axis=1)
+    )
+    df["load_per_pressure"] = df["load"] / df["pressure"]
+    # same derived features as historical and live pipeline
+
+    # feature mapping: live name -> CSV column
+    LOW_FEATURE_MAP = {
+        "screw_speed_mean": "speed",
+        "screw_speed_std": "speed",
+        "pressure_mean": "pressure",
+        "pressure_std": "pressure",
+        "load_mean": "load",
+        "temperature_mean": "temperature_mean",
+        "pressure_per_rpm": "pressure_per_rpm",
+        "temp_spread": "temp_spread",
+        "load_per_pressure": "load_per_pressure",
+    }
+    # std features use same column, .std() calculated separately
+
+    rows = []
+    run_count = len(df)
+    confidence = "HIGH" if run_count >= 50 else "MEDIUM"
+    # 3640 stable rows -> HIGH confidence
+
+    for feature_name, col in LOW_FEATURE_MAP.items():
+        values = df[col].dropna()
+        if len(values) == 0:
+            continue
+
+        mean_val = float(values.mean())
+        std_val = float(values.std()) if len(values) > 1 else 0.0
+        min_val = float(values.min())
+        max_val = float(values.max())
+        p10_val = float(np.percentile(values, 10))
+        p90_val = float(np.percentile(values, 90))
+
+        warning_low = mean_val - 2.0 * std_val
+        warning_high = mean_val + 2.0 * std_val
+        critical_low = mean_val - 3.0 * std_val
+        critical_high = mean_val + 3.0 * std_val
+        # warning = mean ± 2std | critical = mean ± 3std
+
+        rows.append(
+            BaselineRegistry(
+                regime_type="LOW",
+                profile_id=None,
+                feature_name=feature_name,
+                mean_value=mean_val,
+                std_value=std_val,
+                min_value=min_val,
+                max_value=max_val,
+                p10_value=p10_val,
+                p90_value=p90_val,
+                warning_low=warning_low,
+                warning_high=warning_high,
+                critical_low=critical_low,
+                critical_high=critical_high,
+                sample_count=len(values),
+                source_run_count=run_count,
+                baseline_confidence=confidence,
+                created_at=datetime.now(timezone.utc).replace(tzinfo=None),
+                updated_at=datetime.now(timezone.utc).replace(tzinfo=None),
+            )
+        )
+
+    print(f"LOW regime: {len(rows)} baseline rows built from {run_count} stable rows")
+    return rows
+
+
+def main() -> None:
     df = pd.read_csv(STABLE_RUNS_CSV)
     # each row = one stable run with aggregated features + regime label
 
@@ -100,10 +192,14 @@ def main() -> None:
                     sample_count=len(values),
                     source_run_count=run_count,
                     baseline_confidence=confidence,
-                    created_at=datetime.utcnow(),
-                    updated_at=datetime.utcnow(),
+                    created_at=datetime.now(timezone.utc).replace(tzinfo=None),
+                    updated_at=datetime.now(timezone.utc).replace(tzinfo=None),
                 )
             )
+
+    # add LOW regime baselines from separate live CSV
+    low_rows = build_low_regime_baseline()
+    baseline_rows.extend(low_rows)
 
     # clear old baseline rows first to avoid duplicates on re-run
     with Session(engine) as session:

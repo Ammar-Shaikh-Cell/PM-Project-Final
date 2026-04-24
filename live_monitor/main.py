@@ -5,6 +5,8 @@ import time
 
 import config
 from evaluation.evaluation_guard import EvaluationGuard
+from evaluation.baseline_selector import BaselineSelector
+from evaluation.feature_evaluator import FeatureEvaluator
 from ingestion.api_client import APIClient
 from processing.feature_engine import FeatureEngine
 from processing.window_buffer import WindowBuffer
@@ -29,6 +31,10 @@ detector = StateDetector()
 writer = DBWriter()
 # stateless, single instance reused every cycle
 guard = EvaluationGuard()
+# stateful — caches last valid baseline for fallback
+selector = BaselineSelector()
+# stateless, single instance reused every cycle
+evaluator = FeatureEvaluator()
 
 
 def run_cycle() -> None:
@@ -81,6 +87,43 @@ def run_cycle() -> None:
 
     if guard_result["should_evaluate"]:
         logging.info("Guard passed — proceeding to evaluation")
+
+        # Step 7 — select regime + baseline
+        baseline_result = selector.select(features)
+
+        logging.info(
+            "Regime=%s | Method=%s | Confidence=%s",
+            baseline_result["active_regime"],
+            baseline_result["baseline_selection_method"],
+            baseline_result["baseline_confidence"],
+        )
+
+        if baseline_result["baseline_selection_method"] == "NONE":
+            logging.warning("No baseline available — skipping evaluation this cycle")
+            # will be handled properly in evaluation writer (Prompt 6)
+        else:
+            # Step 8 — evaluate features against selected baseline
+            feature_results = evaluator.evaluate(
+                features=features,
+                baseline_records=baseline_result["baseline_records"],
+                live_window_id=live_window.id if live_window else None,
+            )
+
+            evaluator.save(feature_results)
+
+            # log per-feature summary for monitoring
+            for r in feature_results:
+                current_value = 0.0 if r.current_value is None else r.current_value
+                baseline_mean = 0.0 if r.baseline_mean is None else r.baseline_mean
+                z_score = 0.0 if r.z_score is None else r.z_score
+                logging.info(
+                    "  %s: value=%.3f | baseline=%.3f | z=%.2f | status=%s",
+                    r.feature_name,
+                    current_value,
+                    baseline_mean,
+                    z_score,
+                    r.feature_status,
+                )
     else:
         logging.info("Evaluation skipped — reason: %s", guard_result["skip_reason"])
 
