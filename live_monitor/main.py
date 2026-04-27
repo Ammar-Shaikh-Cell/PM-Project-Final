@@ -1,17 +1,24 @@
 """Entry point for the live monitoring polling loop."""
 
 import logging
+import threading
 import time
 
 import config
+import uvicorn
+from api.routes import app
 from evaluation.evaluation_guard import EvaluationGuard
 from evaluation.baseline_selector import BaselineSelector
 from evaluation.feature_evaluator import FeatureEvaluator
+from evaluation.overall_evaluator import OverallEvaluator
 from ingestion.api_client import APIClient
 from processing.feature_engine import FeatureEngine
 from processing.window_buffer import WindowBuffer
 from storage.db_writer import DBWriter
 from state.state_detector import StateDetector
+
+# FastAPI runs in background thread
+# pipeline loop continues unaffected in main thread
 
 # logging helps us monitor pipeline without print statements
 logging.basicConfig(
@@ -35,6 +42,14 @@ guard = EvaluationGuard()
 selector = BaselineSelector()
 # stateless, single instance reused every cycle
 evaluator = FeatureEvaluator()
+# stateless, single instance reused every cycle
+overall_evaluator = OverallEvaluator()
+
+
+def start_api():
+    # starts FastAPI on port 8001
+    # log_level=warning keeps API logs clean in console
+    uvicorn.run(app, host="0.0.0.0", port=8001, log_level="warning")
 
 
 def run_cycle() -> None:
@@ -111,6 +126,26 @@ def run_cycle() -> None:
 
             evaluator.save(feature_results)
 
+            # Step 9 — overall evaluation
+            run_evaluation = overall_evaluator.evaluate(
+                feature_results=feature_results,
+                features=features,
+                baseline_result=baseline_result,
+                confirmed_state=confirmed_state,
+                live_window_id=live_window.id if live_window else None,
+            )
+
+            saved_evaluation = overall_evaluator.save(run_evaluation)
+
+            # link feature evaluations back to run evaluation
+            if saved_evaluation:
+                evaluator.save(
+                    feature_results,
+                    live_run_evaluation_id=saved_evaluation.id,
+                )
+
+            logging.info("Explanation: %s", run_evaluation.explanation_text)
+
             # log per-feature summary for monitoring
             for r in feature_results:
                 current_value = 0.0 if r.current_value is None else r.current_value
@@ -125,7 +160,7 @@ def run_cycle() -> None:
                     r.feature_status,
                 )
     else:
-        logging.info("Evaluation skipped — reason: %s", guard_result["skip_reason"])
+        logging.info("Evaluation skipped - reason: %s", guard_result["skip_reason"])
 
     # store guard result, used in next steps
     # we will pass this to baseline selector and evaluator in next prompts
@@ -175,6 +210,14 @@ def run_cycle() -> None:
 
 if __name__ == "__main__":
     logging.info("Live monitoring pipeline started...")
+
+    # start FastAPI in background thread
+    # daemon=True means API stops when pipeline stops
+    api_thread = threading.Thread(target=start_api, daemon=True)
+    api_thread.start()
+    logging.info("API running at http://localhost:8001")
+    logging.info("API docs at http://localhost:8001/docs")
+
     # Ctrl+C to stop the pipeline cleanly
     try:
         while True:

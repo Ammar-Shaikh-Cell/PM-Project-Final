@@ -4,3 +4,5 @@ numpy
 requests
 apscheduler
 sqlalchemy
+fastapi
+uvicorn
