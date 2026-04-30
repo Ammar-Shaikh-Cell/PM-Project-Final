@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 
 from sqlalchemy import Column, DateTime, Float, Integer, String, create_engine
@@ -181,6 +181,38 @@ class LiveRunEvaluation(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
+# stores every raw API response for ML Layer 2 training
+class MachineSensorRaw(Base):
+    __tablename__ = "machine_sensor_raw"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    trend_date = Column(DateTime, nullable=True)
+    recorded_at = Column(DateTime)
+    source = Column(String, default="live_api")
+    # core sensors
+    Val_1 = Column(Float, nullable=True)  # screw speed
+    Val_5 = Column(Float, nullable=True)  # motor load
+    Val_6 = Column(Float, nullable=True)  # melt pressure
+    Val_7 = Column(Float, nullable=True)  # temp zone 1
+    Val_8 = Column(Float, nullable=True)  # temp zone 2
+    Val_9 = Column(Float, nullable=True)  # temp zone 3
+    Val_10 = Column(Float, nullable=True)  # temp zone 4
+    Val_11 = Column(Float, nullable=True)  # temp zone 5
+    Val_27 = Column(Float, nullable=True)  # temp zone 6
+    Val_28 = Column(Float, nullable=True)  # temp zone 7
+    Val_29 = Column(Float, nullable=True)  # temp zone 8
+    Val_30 = Column(Float, nullable=True)  # temp zone 9
+    Val_31 = Column(Float, nullable=True)  # temp zone 10
+    Val_32 = Column(Float, nullable=True)  # temp zone 11
+    # supporting sensors
+    Val_2 = Column(Float, nullable=True)
+    Val_3 = Column(Float, nullable=True)
+    Val_4 = Column(Float, nullable=True)
+    Val_19 = Column(Float, nullable=True)
+    Val_20 = Column(Float, nullable=True)
+    Val_33 = Column(Float, nullable=True)
+    created_at = Column(DateTime)
+
+
 # creates new tables if they don't exist yet
 Base.metadata.create_all(engine)
 
@@ -229,6 +261,41 @@ class DBWriter:
             logging.warning("Failed to save features: %s", exc)
         finally:
             session.close()
+
+    # saves one raw API response every poll cycle
+    def save_raw_sensor(self, data_point: dict):
+        try:
+            with Session(self.engine) as session:
+                row = MachineSensorRaw(
+                    trend_date=data_point.get("timestamp"),
+                    recorded_at=datetime.now(timezone.utc).replace(tzinfo=None),
+                    source="live_api",
+                    Val_1=data_point.get("screw_speed"),
+                    Val_5=data_point.get("load"),
+                    Val_6=data_point.get("pressure"),
+                    Val_7=data_point.get("temp_zone_7"),
+                    Val_8=data_point.get("temp_zone_8"),
+                    Val_9=data_point.get("temp_zone_9"),
+                    Val_10=data_point.get("temp_zone_10"),
+                    Val_11=data_point.get("temp_zone_11"),
+                    Val_27=data_point.get("temp_zone_27"),
+                    Val_28=data_point.get("temp_zone_28"),
+                    Val_29=data_point.get("temp_zone_29"),
+                    Val_30=data_point.get("temp_zone_30"),
+                    Val_31=data_point.get("temp_zone_31"),
+                    Val_32=data_point.get("temp_zone_32"),
+                    Val_2=data_point.get("Val_2"),
+                    Val_3=data_point.get("Val_3"),
+                    Val_4=data_point.get("Val_4"),
+                    Val_19=data_point.get("Val_19"),
+                    Val_20=data_point.get("Val_20"),
+                    Val_33=data_point.get("Val_33"),
+                    created_at=datetime.now(timezone.utc).replace(tzinfo=None),
+                )
+                session.add(row)
+                session.commit()
+        except Exception as e:
+            logging.warning(f"Failed to save raw sensor: {e}")
 
     # saves current rolling window features to LiveProcessWindow table
     # called every cycle after feature calculation and state detection

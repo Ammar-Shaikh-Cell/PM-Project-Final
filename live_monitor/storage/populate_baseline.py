@@ -13,9 +13,9 @@ from storage.db_writer import BaselineRegistry, engine
 STABLE_RUNS_CSV = "timeSeriesDB/time-series-database/process_segmentation_outputs/results/stable_runs.csv"
 # TODO: update path if different in your project directory
 
-LOW_REGIME_CSV = "timeSeriesDB/time-series-database/process_segmentation_outputs/results/low_regime.csv"
-# LOW regime data from live production (pressure < 280 bar)
-# 4178 rows total, 3640 stable production rows used for baseline
+LOW_REGIME_CSV = "timeSeriesDB/time-series-database/process_segmentation_outputs/results/low_regime1.csv"
+# updated LOW regime dataset — matches current operating conditions
+# speed ~93 RPM, load ~61%, pressure ~251 bar (295 stable rows)
 # TODO: update path if different in your project directory
 
 

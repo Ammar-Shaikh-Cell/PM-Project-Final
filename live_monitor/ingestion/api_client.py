@@ -70,6 +70,24 @@ class APIClient:
                 "pressure": pressure,
                 "load": load,
                 "temperature": temperature,
+                "temp_zone_7": data.get("Val_7"),
+                "temp_zone_8": data.get("Val_8"),
+                "temp_zone_9": data.get("Val_9"),
+                "temp_zone_10": data.get("Val_10"),
+                "temp_zone_11": data.get("Val_11"),
+                "temp_zone_27": data.get("Val_27"),
+                "temp_zone_28": data.get("Val_28"),
+                "temp_zone_29": data.get("Val_29"),
+                "temp_zone_30": data.get("Val_30"),
+                "temp_zone_31": data.get("Val_31"),
+                "temp_zone_32": data.get("Val_32"),
+                "Val_2": data.get("Val_2"),
+                "Val_3": data.get("Val_3"),
+                "Val_4": data.get("Val_4"),
+                "Val_19": data.get("Val_19"),
+                "Val_20": data.get("Val_20"),
+                "Val_33": data.get("Val_33"),
+                # extra fields for raw ML storage, not used in feature engine
             }
         except Exception as exc:  # pragma: no cover - runtime API safety
             logging.warning("API fetch failed: %s", exc)

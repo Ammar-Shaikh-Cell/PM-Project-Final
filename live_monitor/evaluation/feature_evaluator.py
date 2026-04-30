@@ -135,6 +135,34 @@ class FeatureEvaluator:
                         r.live_run_evaluation_id = live_run_evaluation_id
                 session.add_all(results)
                 session.commit()
+                # refresh each object to ensure attributes are loaded
+                for r in results:
+                    session.refresh(r)
+                # read required attributes while session is active
+                _materialized_results = [
+                    {
+                        "id": r.id,
+                        "live_process_window_id": r.live_process_window_id,
+                        "live_run_evaluation_id": r.live_run_evaluation_id,
+                        "feature_name": r.feature_name,
+                        "current_value": r.current_value,
+                        "baseline_id": r.baseline_id,
+                        "baseline_mean": r.baseline_mean,
+                        "baseline_std": r.baseline_std,
+                        "baseline_warning_low": r.baseline_warning_low,
+                        "baseline_warning_high": r.baseline_warning_high,
+                        "baseline_critical_low": r.baseline_critical_low,
+                        "baseline_critical_high": r.baseline_critical_high,
+                        "deviation_abs": r.deviation_abs,
+                        "deviation_pct": r.deviation_pct,
+                        "z_score": r.z_score,
+                        "feature_status": r.feature_status,
+                        "created_at": r.created_at,
+                    }
+                    for r in results
+                ]
+                session.expunge_all()
+                # refresh + expunge keeps objects usable after session closes
                 logging.info("Feature evaluations saved: %s features", len(results))
                 return True
         except Exception as e:

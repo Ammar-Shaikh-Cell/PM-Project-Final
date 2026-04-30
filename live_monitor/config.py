@@ -38,3 +38,17 @@ CONFIRMATION_WINDOWS = int(os.getenv("CONFIRMATION_WINDOWS", "3"))  # consecutiv
 # Database (stub for now)
 DB_CONNECTION_STRING = os.getenv("DB_CONNECTION_STRING", "sqlite:///live_monitor.db")  # replace with real DB later
 
+# single source of truth for regime thresholds across all modules
+REGIME_LOW_MAX = 280.0
+REGIME_MID_MIN = 280.0
+REGIME_MID_MAX = 320.0
+REGIME_HIGH_MIN = 320.0
+
+# ML data paths
+WINDOWED_FEATURES_CSV = r"C:\Users\AbdulRauf(AIEngineer\OneDrive - Standardverzeichnis\Desktop\PM-Project - Copy\timeSeriesDB\time-series-database\process_segmentation_outputs\results\windowed_features.csv"
+STABLE_RUNS_CSV = r"C:\Users\AbdulRauf(AIEngineer\OneDrive - Standardverzeichnis\Desktop\PM-Project - Copy\timeSeriesDB\time-series-database\process_segmentation_outputs\results\stable_runs.csv"
+ML_OUTPUT_DIR = r"C:\Users\AbdulRauf(AIEngineer\OneDrive - Standardverzeichnis\Desktop\PM-Project - Copy\live_monitor\ml_data"
+# ML data paths — update if project directory changes
+# update these paths to match your project directory
+# ML_OUTPUT_DIR will be created automatically if not exists
+

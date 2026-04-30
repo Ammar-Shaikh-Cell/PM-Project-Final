@@ -55,6 +55,8 @@ def start_api():
 def run_cycle() -> None:
     """Run one full polling-to-state-detection cycle."""
     # this function runs every 10-15 seconds (one full pipeline cycle)
+    live_window = None
+    # initialize to None so it's always defined even if save fails
 
     # Step 1 — Fetch latest data from API/mock source.
     # skip this cycle if API call fails
@@ -70,6 +72,12 @@ def run_cycle() -> None:
     # Step 2 — Add latest reading into the rolling buffer.
     # new data point added to rolling window
     buffer.add(data_point)
+    # save raw reading for ML Layer 2 training data
+    try:
+        writer.save_raw_sensor(data_point)
+    except Exception as e:
+        logging.warning(f"Raw sensor save error: {e}")
+    # never crashes pipeline, just logs if save fails
 
     # Step 3 — Wait until buffer has enough data for stable calculations.
     # we need minimum 10 points before calculating features
@@ -97,11 +105,21 @@ def run_cycle() -> None:
     else:
         logging.info("Waiting for state confirmation...")
 
+    # build state_info dict for window storage
+    state_info = {
+        "candidate_state": candidate_state,
+        "confirmed_state": confirmed_state,
+        "confirmation_count": len(detector.candidate_history),
+    }
+
+    # save window to LiveProcessWindow table
+    live_window = writer.save_live_process_window(features, state_info)
+
     # Step 6b — run evaluation guard
     guard_result = guard.check(confirmed_state, features)
 
     if guard_result["should_evaluate"]:
-        logging.info("Guard passed — proceeding to evaluation")
+        logging.info("Guard passed - proceeding to evaluation")
 
         # Step 7 — select regime + baseline
         baseline_result = selector.select(features)
@@ -114,7 +132,7 @@ def run_cycle() -> None:
         )
 
         if baseline_result["baseline_selection_method"] == "NONE":
-            logging.warning("No baseline available — skipping evaluation this cycle")
+            logging.warning("No baseline available - skipping evaluation this cycle")
             # will be handled properly in evaluation writer (Prompt 6)
         else:
             # Step 8 — evaluate features against selected baseline
@@ -164,16 +182,6 @@ def run_cycle() -> None:
 
     # store guard result, used in next steps
     # we will pass this to baseline selector and evaluator in next prompts
-
-    # build state_info dict for window storage
-    state_info = {
-        "candidate_state": candidate_state,
-        "confirmed_state": confirmed_state,
-        "confirmation_count": len(detector.candidate_history),
-    }
-
-    # save window to LiveProcessWindow table
-    live_window = writer.save_live_process_window(features, state_info)
 
     # keeping old WindowFeatures save for backward compatibility
     try:
