@@ -52,3 +52,12 @@ ML_OUTPUT_DIR = r"C:\Users\AbdulRauf(AIEngineer\OneDrive - Standardverzeichnis\D
 # update these paths to match your project directory
 # ML_OUTPUT_DIR will be created automatically if not exists
 
+# 30-min windows for ML Layer 2 (anomaly detection, clustering, LSTM)
+ML_WINDOW_MINUTES = int(os.getenv("ML_WINDOW_MINUTES", "30"))
+ML_WINDOW_MIN_ROWS = int(os.getenv("ML_WINDOW_MIN_ROWS", "10"))
+ML_30MIN_MATRIX_CSV = os.path.join(ML_OUTPUT_DIR, "ml_feature_matrix_30min.csv")
+
+# historical stable run thresholds (align with offline segmentation gates)
+STABLE_SPEED_MEAN_MIN = float(os.getenv("STABLE_SPEED_MEAN_MIN", "20.0"))
+STABLE_SPEED_DELTA_MAX = float(os.getenv("STABLE_SPEED_DELTA_MAX", "8.0"))
+
