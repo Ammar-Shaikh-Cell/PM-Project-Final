@@ -6,3 +6,5 @@ apscheduler
 sqlalchemy
 fastapi
 uvicorn
+scikit-learn
+joblib

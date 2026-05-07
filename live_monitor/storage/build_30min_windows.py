@@ -101,6 +101,20 @@ def _aggregate_bucket(sub: pd.DataFrame) -> dict[str, object]:
         row[f"max_{col}"] = max_val
         row[f"range_{col}"] = max_val - min_val
 
+    # slope detects rising/falling trends for state learning
+    if len(sub) < 2:
+        row["slope_Val_1"] = 0.0
+        row["slope_Val_6"] = 0.0
+        row["slope_temperature"] = 0.0
+    else:
+        seconds = (sub["trend_date"] - sub["trend_date"].iloc[0]).dt.total_seconds().astype(float).to_numpy()
+        val_1 = pd.to_numeric(sub["Val_1"], errors="coerce").fillna(0.0).to_numpy()
+        val_6 = pd.to_numeric(sub["Val_6"], errors="coerce").fillna(0.0).to_numpy()
+        temp = pd.to_numeric(sub["temperature_mean"], errors="coerce").fillna(0.0).to_numpy()
+        row["slope_Val_1"] = float(np.polyfit(seconds, val_1, 1)[0])
+        row["slope_Val_6"] = float(np.polyfit(seconds, val_6, 1)[0])
+        row["slope_temperature"] = float(np.polyfit(seconds, temp, 1)[0])
+
     row["temperature_spread_mean"] = float(sub["temperature_spread"].mean(skipna=True))
     row["row_count"] = int(len(sub))
     row["valid_fraction"] = float((sub["Val_1"].fillna(0) > 0).sum() / max(len(sub), 1))

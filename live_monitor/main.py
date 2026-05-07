@@ -183,12 +183,6 @@ def run_cycle() -> None:
     # store guard result, used in next steps
     # we will pass this to baseline selector and evaluator in next prompts
 
-    # keeping old WindowFeatures save for backward compatibility
-    try:
-        writer.save_features(features)
-    except Exception as exc:  # pragma: no cover - runtime DB safety
-        logging.warning("Failed to save features to DB: %s", exc)
-
     # Step 8 — Save state to DB.
     # persist state every cycle, confirmed_state may be None
 # try:

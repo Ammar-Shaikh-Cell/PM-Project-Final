@@ -4,6 +4,12 @@ from __future__ import annotations
 
 from live_monitor import config
 
+# temporary hardcoded upper limits for anomaly-like operating windows
+#MAX_SCREW_SPEED_MEAN = 140.0
+#MAX_PRESSURE_MEAN = 420.0
+#MAX_TEMPERATURE_MEAN = 320.0
+#MAX_LOAD_MEAN = 95.0
+
 
 class StateDetector:
     """Detect candidate machine states and confirm them over multiple windows."""
@@ -41,6 +47,15 @@ class StateDetector:
         # machine running below normal production levels
         if 10 <= screw_speed_mean < 50 and 20 <= pressure_mean < 150:
             return "LOW_PRODUCTION"
+
+        # temporary hardcoded caps: flag clearly abnormal high operating values
+        #if (
+         #   screw_speed_mean > MAX_SCREW_SPEED_MEAN
+          #  or pressure_mean > MAX_PRESSURE_MEAN
+          #  or temperature_mean > MAX_TEMPERATURE_MEAN
+            #or load_mean > MAX_LOAD_MEAN
+        #):
+        #    return "ANOMALY"
 
         # machine in full production based on real extruder values
         if (
