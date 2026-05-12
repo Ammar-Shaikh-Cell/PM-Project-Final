@@ -74,6 +74,26 @@ def _safe_ratio(numerator: pd.Series, denominator: pd.Series) -> pd.Series:
     return (numerator / denom).fillna(0.0)
 
 
+def _linear_slope_from_seconds(seconds: np.ndarray, values: np.ndarray) -> float:
+    """Linear trend slope vs. time; guards ill-conditioned / duplicate timestamps."""
+    if len(seconds) < 2:
+        return 0.0
+    sec = np.asarray(seconds, dtype=float)
+    val = np.asarray(values, dtype=float)
+    mask = np.isfinite(sec) & np.isfinite(val)
+    if int(mask.sum()) < 2:
+        return 0.0
+    sec = sec[mask]
+    val = val[mask]
+    span = float(np.ptp(sec))
+    if span == 0.0 or not np.isfinite(span):
+        return 0.0
+    try:
+        return float(np.polyfit(sec, val, 1)[0])
+    except np.linalg.LinAlgError:
+        return float((val[-1] - val[0]) / span)
+
+
 def _regime_from_pressure(mean_pressure: float) -> str:
     # thresholds read from config, not hardcoded
     if pd.isna(mean_pressure):
@@ -111,9 +131,9 @@ def _aggregate_bucket(sub: pd.DataFrame) -> dict[str, object]:
         val_1 = pd.to_numeric(sub["Val_1"], errors="coerce").fillna(0.0).to_numpy()
         val_6 = pd.to_numeric(sub["Val_6"], errors="coerce").fillna(0.0).to_numpy()
         temp = pd.to_numeric(sub["temperature_mean"], errors="coerce").fillna(0.0).to_numpy()
-        row["slope_Val_1"] = float(np.polyfit(seconds, val_1, 1)[0])
-        row["slope_Val_6"] = float(np.polyfit(seconds, val_6, 1)[0])
-        row["slope_temperature"] = float(np.polyfit(seconds, temp, 1)[0])
+        row["slope_Val_1"] = _linear_slope_from_seconds(seconds, val_1)
+        row["slope_Val_6"] = _linear_slope_from_seconds(seconds, val_6)
+        row["slope_temperature"] = _linear_slope_from_seconds(seconds, temp)
 
     row["temperature_spread_mean"] = float(sub["temperature_spread"].mean(skipna=True))
     row["row_count"] = int(len(sub))

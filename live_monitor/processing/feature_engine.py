@@ -21,6 +21,11 @@ class FeatureEngine:
 
         # Ensure expected numeric columns are treated as numbers for robust math.
         numeric_df = window_df.copy()
+        time_col = "buffer_timestamp" if "buffer_timestamp" in numeric_df.columns else "timestamp"
+        numeric_df[time_col] = pd.to_datetime(numeric_df[time_col], errors="coerce")
+        numeric_df = numeric_df.dropna(subset=[time_col]).sort_values(time_col).reset_index(drop=True)
+        if numeric_df.empty:
+            return None
         sensor_columns = ["screw_speed", "pressure", "temperature", "load"]
         for column in sensor_columns:
             numeric_df[column] = pd.to_numeric(numeric_df[column], errors="coerce")
@@ -76,14 +81,14 @@ class FeatureEngine:
 
         # Window boundaries help downstream components align decisions in time.
         # must be Python datetime objects for SQLite compatibility
-        window_start = pd.to_datetime(window_df["timestamp"].iloc[0]).to_pydatetime()
-        window_end = pd.to_datetime(window_df["timestamp"].iloc[-1]).to_pydatetime()
+        window_start = pd.to_datetime(numeric_df[time_col].iloc[0]).to_pydatetime()
+        window_end = pd.to_datetime(numeric_df[time_col].iloc[-1]).to_pydatetime()
 
         return {
             "window_start": window_start,
             "window_end": window_end,
             # placeholder fractions for now, can be refined later
-            "row_count": len(window_df),
+            "row_count": len(numeric_df),
             "valid_fraction": 1.0,
             "invalid_fraction": 0.0,
             "outlier_fraction": 0.0,

@@ -61,11 +61,14 @@ class APIClient:
             # average across 11 temperature zones (Val_7,8,9,10,11,27,28,29,30,31,32)
             # if some zones missing in response, average only available ones
 
-            # TrendDate is the machine timestamp from API
-            timestamp = self._parse_timestamp(data.get(config.FIELD_TIMESTAMP))
+            # Keep the raw machine timestamp for traceability, but use
+            # local ingest time for rolling-window buffering stability.
+            source_timestamp = self._parse_timestamp(data.get(config.FIELD_TIMESTAMP))
+            buffer_timestamp = datetime.utcnow()
 
             return {
-                "timestamp": timestamp,
+                "timestamp": source_timestamp,
+                "buffer_timestamp": buffer_timestamp,
                 "screw_speed": screw_speed,
                 "pressure": pressure,
                 "load": load,

@@ -22,7 +22,9 @@ class WindowBuffer:
         """Add a new data point to the buffer and trim old entries."""
         # called every time a new API reading arrives
         self.buffer.append(data_point)
+       # print(f"Buffer length: {len(self.buffer)}")
         self._trim()
+        #print(f"Trimmed buffer length: {len(self.buffer)}")
 
     def _trim(self) -> None:
         """Remove readings that are older than the configured rolling window."""
@@ -31,7 +33,9 @@ class WindowBuffer:
         trimmed_buffer: list[dict] = []
 
         for point in self.buffer:
-            timestamp_raw = point.get("timestamp")
+            # Use local ingest timestamp for rolling window behavior.
+            # Fall back to API timestamp for backward compatibility.
+            timestamp_raw = point.get("buffer_timestamp", point.get("timestamp"))
             if timestamp_raw is None:
                 continue
             timestamp = pd.to_datetime(timestamp_raw, utc=True, errors="coerce")
