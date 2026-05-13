@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 import pandas as pd
 
 from live_monitor import config
-
+from collections import deque
 
 class WindowBuffer:
     """Maintain a time-based rolling buffer of incoming machine readings."""
@@ -15,7 +15,8 @@ class WindowBuffer:
     def __init__(self) -> None:
         """Initialize an empty buffer and load window duration configuration."""
         # holds last 2-3 minutes of raw data points
-        self.buffer: list[dict] = []
+        # self.buffer: list[dict] = []
+        self.buffer: deque[dict] = deque(maxlen=10)
         self.window_duration_seconds = config.WINDOW_DURATION_SECONDS
 
     def add(self, data_point: dict) -> None:
@@ -23,7 +24,7 @@ class WindowBuffer:
         # called every time a new API reading arrives
         self.buffer.append(data_point)
        # print(f"Buffer length: {len(self.buffer)}")
-        self._trim()
+        # self._trim()
         #print(f"Trimmed buffer length: {len(self.buffer)}")
 
     def _trim(self) -> None:

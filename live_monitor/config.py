@@ -22,13 +22,13 @@ FIELD_TEMPERATURE_ZONES = [
     "Val_8",
     "Val_9",
     "Val_10",
-    # "Val_11",
-    # "Val_27",
-    # "Val_28",
-    # "Val_29",
-    # "Val_30",
-    # "Val_31",
-    # "Val_32",
+    "Val_11",
+    "Val_27",
+    "Val_28",
+    "Val_29",
+    "Val_30",
+    "Val_31",
+    "Val_32",
 ]
 # temperature = average of all 11 zone sensors
 
@@ -60,4 +60,10 @@ ML_30MIN_MATRIX_CSV = os.path.join(ML_OUTPUT_DIR, "ml_feature_matrix_30min.csv")
 # historical stable run thresholds (align with offline segmentation gates)
 STABLE_SPEED_MEAN_MIN = float(os.getenv("STABLE_SPEED_MEAN_MIN", "20.0"))
 STABLE_SPEED_DELTA_MAX = float(os.getenv("STABLE_SPEED_DELTA_MAX", "8.0"))
+
+# Isolation Forest — train_anomaly_production, train_anomaly_off (override via env)
+_anomaly_if_contamination_raw = os.getenv("ANOMALY_IF_CONTAMINATION", "auto").strip().lower()
+ANOMALY_IF_CONTAMINATION = "auto" if _anomaly_if_contamination_raw == "auto" else float(_anomaly_if_contamination_raw)
+ANOMALY_IF_RANDOM_STATE = int(os.getenv("ANOMALY_IF_RANDOM_STATE", "42"))
+ANOMALY_IF_N_ESTIMATORS = int(os.getenv("ANOMALY_IF_N_ESTIMATORS", "100"))
 
