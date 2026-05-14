@@ -17,7 +17,7 @@ FIELD_TIMESTAMP = "TrendDate"
 FIELD_SCREW_SPEED = "Val_1"
 FIELD_PRESSURE = "Val_6"
 FIELD_LOAD = "Val_5"
-FIELD_TEMPERATURE_ZONES = [
+FIELD_TEMPERATURE_ZONES = [ 
     "Val_7",
     "Val_8",
     "Val_9",
@@ -66,4 +66,12 @@ _anomaly_if_contamination_raw = os.getenv("ANOMALY_IF_CONTAMINATION", "auto").st
 ANOMALY_IF_CONTAMINATION = "auto" if _anomaly_if_contamination_raw == "auto" else float(_anomaly_if_contamination_raw)
 ANOMALY_IF_RANDOM_STATE = int(os.getenv("ANOMALY_IF_RANDOM_STATE", "42"))
 ANOMALY_IF_N_ESTIMATORS = int(os.getenv("ANOMALY_IF_N_ESTIMATORS", "100"))
+
+# Minimum labeled-window counts for anomaly model registry (ml.model_registry)
+ANOMALY_MIN_SAMPLES_PRODUCTION = int(os.getenv("ANOMALY_MIN_SAMPLES_PRODUCTION", "100"))
+ANOMALY_MIN_SAMPLES_OFF = int(os.getenv("ANOMALY_MIN_SAMPLES_OFF", "100"))
+ANOMALY_MIN_SAMPLES_HEATING = int(os.getenv("ANOMALY_MIN_SAMPLES_HEATING", "20"))
+ANOMALY_MIN_SAMPLES_LOW_PRODUCTION = int(os.getenv("ANOMALY_MIN_SAMPLES_LOW_PRODUCTION", "50"))
+ANOMALY_MIN_SAMPLES_COOLING = int(os.getenv("ANOMALY_MIN_SAMPLES_COOLING", "50"))
+ANOMALY_MIN_SAMPLES_READY = int(os.getenv("ANOMALY_MIN_SAMPLES_READY", "50"))
 
