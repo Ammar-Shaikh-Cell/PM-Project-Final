@@ -15,6 +15,7 @@ from ingestion.api_client import APIClient
 from processing.feature_engine import FeatureEngine
 from processing.window_buffer import WindowBuffer
 from storage.db_writer import DBWriter
+from ml.anomaly_scorer import AnomalyScorer
 from state.state_detector import StateDetector
 
 # FastAPI runs in background thread
@@ -44,6 +45,8 @@ selector = BaselineSelector()
 evaluator = FeatureEvaluator()
 # stateless, single instance reused every cycle
 overall_evaluator = OverallEvaluator()
+# loads all available state-specific anomaly models
+anomaly_scorer = AnomalyScorer()
 
 
 def start_api():
@@ -105,6 +108,20 @@ def run_cycle() -> None:
     else:
         logging.info("Waiting for state confirmation...")
 
+    # ML anomaly scoring — state-specific
+    ml_result = anomaly_scorer.score(
+        features=features,
+        confirmed_state=confirmed_state,
+    )
+    logging.info(
+        "ML Anomaly | state=%s | score=%s | anomaly=%s | status=%s",
+        confirmed_state,
+        ml_result["ml_anomaly_score"],
+        ml_result["ml_is_anomaly"],
+        ml_result["ml_model_status"],
+    )
+    # logged every cycle for monitoring
+
     # build state_info dict for window storage
     state_info = {
         "candidate_state": candidate_state,
@@ -145,12 +162,14 @@ def run_cycle() -> None:
             evaluator.save(feature_results)
 
             # Step 9 — overall evaluation
+            # overall evaluation includes ML anomaly signal
             run_evaluation = overall_evaluator.evaluate(
                 feature_results=feature_results,
                 features=features,
                 baseline_result=baseline_result,
                 confirmed_state=confirmed_state,
                 live_window_id=live_window.id if live_window else None,
+                ml_result=ml_result,
             )
 
             saved_evaluation = overall_evaluator.save(run_evaluation)

@@ -1,0 +1,24 @@
+{
+  "theme": "base",
+  "themeVariables": {
+    "primaryColor": "#ede9fe",
+    "primaryTextColor": "#3b0764",
+    "primaryBorderColor": "#7c3aed",
+    "lineColor": "#6d28d9",
+    "secondaryColor": "#f3e8ff",
+    "tertiaryColor": "#faf5ff",
+    "fontFamily": "Segoe UI, sans-serif",
+    "fontSize": "15px"
+  },
+  "flowchart": {
+    "padding": 14,
+    "nodeSpacing": 45,
+    "rankSpacing": 40,
+    "useMaxWidth": true
+  },
+  "sequence": {
+    "diagramMarginX": 20,
+    "diagramMarginY": 12,
+    "boxMargin": 8
+  }
+}

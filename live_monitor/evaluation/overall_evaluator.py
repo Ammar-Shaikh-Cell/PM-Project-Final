@@ -29,6 +29,7 @@ class OverallEvaluator:
         baseline_result,
         confirmed_state,
         live_window_id,
+        ml_result=None,
     ) -> LiveRunEvaluation:
         # main entry — builds one LiveRunEvaluation from feature results
         # inputs:
@@ -68,6 +69,12 @@ class OverallEvaluator:
             overall_status = "NORMAL"
         # core feature CRITICAL overrides everything
         # any WARNING in non-core still raises to WARNING
+
+        if ml_result and ml_result.get("ml_is_anomaly") is True:
+            if overall_status == "NORMAL":
+                overall_status = "WARNING"
+            # ML anomaly upgrades status minimum to WARNING
+            # ML signal adds to Layer 1 evaluation
 
         # Step 4 — determine stability_status:
         # use screw_speed_std and pressure_std as stability indicators
@@ -121,19 +128,29 @@ class OverallEvaluator:
         # human-readable summary for UI
 
         # Step 8 — build and return LiveRunEvaluation object:
-        return LiveRunEvaluation(
-            live_process_window_id=live_window_id,
-            detected_state=confirmed_state,
-            active_regime=baseline_result.get("active_regime"),
-            baseline_selection_method=baseline_result.get("baseline_selection_method"),
-            evaluation_status="EVALUATED",
-            overall_status=overall_status,
-            stability_status=stability_status,
-            drift_score=drift_score,
-            anomaly_score=anomaly_score,
-            explanation_text=explanation_text,
-            created_at=datetime.now(timezone.utc).replace(tzinfo=None),
-        )
+        evaluation_kwargs = {
+            "live_process_window_id": live_window_id,
+            "detected_state": confirmed_state,
+            "active_regime": baseline_result.get("active_regime"),
+            "baseline_selection_method": baseline_result.get("baseline_selection_method"),
+            "evaluation_status": "EVALUATED",
+            "overall_status": overall_status,
+            "stability_status": stability_status,
+            "drift_score": drift_score,
+            "anomaly_score": anomaly_score,
+            "explanation_text": explanation_text,
+            "created_at": datetime.now(timezone.utc).replace(tzinfo=None),
+        }
+        # store ML result alongside Layer 1 result
+        if hasattr(LiveRunEvaluation, "ml_anomaly_score"):
+            evaluation_kwargs["ml_anomaly_score"] = (
+                ml_result.get("ml_anomaly_score") if ml_result else None
+            )
+        if hasattr(LiveRunEvaluation, "ml_is_anomaly"):
+            evaluation_kwargs["ml_is_anomaly"] = (
+                ml_result.get("ml_is_anomaly") if ml_result else None
+            )
+        return LiveRunEvaluation(**evaluation_kwargs)
 
     def _build_explanation(
         self,
